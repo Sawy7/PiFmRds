@@ -28,8 +28,10 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <math.h>
+#include <pthread.h>
 
 #include "rds.h"
+#include "pulse_virtual.h"
 
 
 #define PI 3.141592654
@@ -67,8 +69,8 @@ int fir_index = 0;
 int channels;
 
 SNDFILE *inf;
-
-
+pthread_t pa_thread_id;
+int p[2];
 
 float *alloc_empty_buffer(size_t length) {
     float *p = malloc(length * sizeof(float));
@@ -80,15 +82,31 @@ float *alloc_empty_buffer(size_t length) {
 }
 
 
-int fm_mpx_open(char *filename, size_t len) {
+int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
     length = len;
 
-    if(filename != NULL) {
+    if(filename != NULL || pulseaudio)
+    {
         // Open the input file
         SF_INFO sfinfo;
- 
+
         // stdin or file on the filesystem?
-        if(filename[0] == '-') {
+        if(pulseaudio)
+        {
+            if (pipe(p) < 0)
+                // TODO: ERROR MESSAGE
+                exit(1);
+
+            pthread_create(&pa_thread_id, NULL, pulse_virtual, p);
+            pthread_detach(pa_thread_id); // TODO: make better with strategic pthread_join
+            
+            if(! (inf = sf_open_fd(p[0], SFM_READ, &sfinfo, 0))) {
+                fprintf(stderr, "Error: could not open read pipe.\n") ;
+                return -1;
+            } else {
+                printf("Using PulseAudio sink for audio input.\n");
+            }
+        } else if(filename[0] == '-') {
             if(! (inf = sf_open_fd(fileno(stdin), SFM_READ, &sfinfo, 0))) {
                 fprintf(stderr, "Error: could not open stdin for audio input.\n") ;
                 return -1;
@@ -103,7 +121,7 @@ int fm_mpx_open(char *filename, size_t len) {
                 printf("Using audio file: %s\n", filename);
             }
         }
-            
+
         int in_samplerate = sfinfo.samplerate;
         downsample_factor = 228000. / in_samplerate;
     
@@ -146,8 +164,7 @@ int fm_mpx_open(char *filename, size_t len) {
         audio_pos = downsample_factor;
         audio_buffer = alloc_empty_buffer(length * channels);
         if(audio_buffer == NULL) return -1;
-
-    } // end if(filename != NULL)
+    }
     else {
         inf = NULL;
         // inf == NULL indicates that there is no audio

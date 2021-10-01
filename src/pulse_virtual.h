@@ -1,6 +1,6 @@
 /*
     PiFmRds - FM/RDS transmitter for the Raspberry Pi
-    Copyright (C) 2014 Christophe Jacquet, F8FTK
+    Copyright (C) 2021 Christophe Jacquet, F8FTK, Jan Nemec
     
     See https://github.com/ChristopheJacquet/PiFmRds
     
@@ -21,6 +21,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-extern int fm_mpx_open(char *filename, int pulseaudio, size_t len);
-extern int fm_mpx_get_samples(float *mpx_buffer);
-extern int fm_mpx_close();
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#include <pulse/pulseaudio.h>
+#include <sndfile.h>
+
+// From pulsecore/macro.h
+#define pa_memzero(x,l) (memset((x), 0, (l)))
+#define pa_zero(x) (pa_memzero(&(x), sizeof(x)))
+
+void* pulse_virtual(int *pipe);
+
+void context_state_cb(pa_context *c, void *userdata);
+void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata);
+void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata);
+void stream_state_cb(pa_stream *s, void *userdata);
+void stream_read_cb(pa_stream *s, size_t length, void *userdata);

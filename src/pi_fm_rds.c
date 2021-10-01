@@ -317,7 +317,7 @@ map_peripheral(uint32_t base, uint32_t len)
 #define DATA_SIZE 5000
 
 
-int tx(uint32_t carrier_freq, char *audio_file, uint16_t pi, char *ps, char *rt, float ppm, char *control_pipe) {
+int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, char *ps, char *rt, float ppm, char *control_pipe) {
     // Catch all signals possible - it is vital we kill the DMA engine
     // on process exit!
     for (int i = 0; i < 64; i++) {
@@ -452,7 +452,7 @@ int tx(uint32_t carrier_freq, char *audio_file, uint16_t pi, char *ps, char *rt,
     int data_index = 0;
 
     // Initialize the baseband generator
-    if(fm_mpx_open(audio_file, DATA_SIZE) < 0) return 1;
+    if(fm_mpx_open(audio_file, pulseaudio, DATA_SIZE) < 0) return 1;
     
     // Initialize the RDS modulator
     char myps[9] = {0};
@@ -546,6 +546,7 @@ int tx(uint32_t carrier_freq, char *audio_file, uint16_t pi, char *ps, char *rt,
 
 int main(int argc, char **argv) {
     char *audio_file = NULL;
+    int pulseaudio = 0;
     char *control_pipe = NULL;
     uint32_t carrier_freq = 107900000;
     char *ps = NULL;
@@ -564,6 +565,8 @@ int main(int argc, char **argv) {
         if((strcmp("-wav", arg)==0 || strcmp("-audio", arg)==0) && param != NULL) {
             i++;
             audio_file = param;
+        } else if(strcmp("-pulse", arg)==0) {
+            pulseaudio = 1;
         } else if(strcmp("-freq", arg)==0 && param != NULL) {
             i++;
             carrier_freq = 1e6 * atof(param);
@@ -591,7 +594,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    int errcode = tx(carrier_freq, audio_file, pi, ps, rt, ppm, control_pipe);
+    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, ps, rt, ppm, control_pipe);
     
     terminate(errcode);
 }
