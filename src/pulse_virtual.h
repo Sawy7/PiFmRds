@@ -27,10 +27,13 @@
 #include <fcntl.h>
 #include <pulse/pulseaudio.h>
 #include <sndfile.h>
+#include <pthread.h>
 
 // From pulsecore/macro.h
 #define pa_memzero(x,l) (memset((x), 0, (l)))
 #define pa_zero(x) (pa_memzero(&(x), sizeof(x)))
+
+#define	SIGPA 64
 
 void* pulse_virtual(int *pipe);
 
@@ -39,3 +42,6 @@ void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata);
 void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata);
 void stream_state_cb(pa_stream *s, void *userdata);
 void stream_read_cb(pa_stream *s, size_t length, void *userdata);
+void sink_unload_cb(pa_context *c, int success, void *userdata);
+void setup_cleanup();
+void cleanup_handler();

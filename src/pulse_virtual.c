@@ -2,13 +2,13 @@
 
 // global vars
 int ret;
-int *p_in;
+int *p;
+pa_mainloop *pa_ml;
 pa_context *context;
+uint32_t module_idx;
 static pa_stream *stream = NULL;
 static pa_stream_flags_t flags = PA_STREAM_ADJUST_LATENCY;
-int fdout;
-char *fname = "/tmp/tmp.s16";
-SNDFILE *localinf;
+SNDFILE *writeinf;
 static pa_sample_spec sample_spec = {
   .format = PA_SAMPLE_S16LE,
   .rate = 44100,
@@ -16,11 +16,13 @@ static pa_sample_spec sample_spec = {
 };
 
 void* pulse_virtual(int *pipe)
-{
-    p_in = pipe;
-    pa_mainloop *pa_ml = pa_mainloop_new();
+{    
+    setup_cleanup();
+    
+    p = pipe;
+    pa_ml = pa_mainloop_new();
     pa_mainloop_api *pa_mlapi = pa_mainloop_get_api(pa_ml);
-    context = pa_context_new(pa_mlapi, "test");
+    context = pa_context_new(pa_mlapi, "pifmrds");
 
     pa_context_connect(context, NULL, 0, NULL);
     pa_context_set_state_callback(context, context_state_cb, NULL);
@@ -45,7 +47,7 @@ void context_state_cb(pa_context *c, void *userdata)
     case PA_CONTEXT_READY:
         printf("Server context is ready!\n");
         // load_module
-        pa_context_load_module(context, "module-null-sink", "sink_name=testsink sink_properties=device.description=FM_Speakers", sink_ready_cb, NULL);
+        pa_context_load_module(context, "module-null-sink", "sink_name=pifmsink sink_properties=device.description=FM_Speakers", sink_ready_cb, NULL);
 	    break;
     case PA_CONTEXT_FAILED:
 	    return;
@@ -58,12 +60,13 @@ void context_state_cb(pa_context *c, void *userdata)
 void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata)
 {
     if (idx == PA_INVALID_INDEX) {
-        // TODO: PUSH SOME ERROR MESSAGE
+        fprintf(stderr, "Error: invalid index in sink_ready_cb().\n") ;
         return;
     }
+    module_idx = idx;
     printf("Sink created!\n");
 
-    pa_operation *o = pa_context_get_sink_info_by_name(c, "testsink", sinkinfo_cb, NULL);
+    pa_operation *o = pa_context_get_sink_info_by_name(c, "pifmsink", sinkinfo_cb, NULL);
     pa_operation_unref(o);
 }
 
@@ -71,7 +74,7 @@ void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
     if (eol == 0)
     {
-        printf("Hello, get hype, alright!\n");
+        printf("Sink info:\n");
         printf("Index: %d\n", i->index);
         printf("Name: %s\n", i->name);
         printf("Description: %s\n", i->description);
@@ -80,8 +83,8 @@ void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
         pa_buffer_attr buffer_attr;
 
         if (!(stream = pa_stream_new(c, "CaptureStream", &sample_spec, NULL))) {
-        printf("pa_stream_new() failed: %s", pa_strerror(pa_context_errno(c)));
-        exit(1);
+            printf("pa_stream_new() failed: %s", pa_strerror(pa_context_errno(c)));
+            exit(1);
         }
 
         // Watch for changes in the stream state to create the output file
@@ -92,16 +95,16 @@ void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 
         // Set properties of the record buffer
         pa_zero(buffer_attr);
-        buffer_attr.maxlength = (uint32_t) 8000;
+        buffer_attr.maxlength = (uint32_t) -1;
         buffer_attr.tlength = (uint32_t) -1;
         buffer_attr.prebuf = (uint32_t) -1;
         buffer_attr.minreq = (uint32_t) -1;   
-        buffer_attr.fragsize = (uint32_t) 8000;
+        buffer_attr.fragsize = (uint32_t) 5000 * sizeof(float);
 
         // and start recording
         if (pa_stream_connect_record(stream, i->monitor_source_name, &buffer_attr, flags) < 0) {
-        printf("pa_stream_connect_record() failed: %s", pa_strerror(pa_context_errno(c)));
-        exit(1);
+            printf("pa_stream_connect_record() failed: %s", pa_strerror(pa_context_errno(c)));
+            exit(1);
         }
         // END
     }
@@ -113,22 +116,14 @@ void stream_state_cb(pa_stream *s, void *userdata)
 
     switch (pa_stream_get_state(s)) {
     case PA_STREAM_CREATING:
-        // The stream has been created, so 
-        // let's open a file to record to
         printf("Creating stream\n");
-        fdout = creat(fname,  0711);
         break;
     case PA_STREAM_TERMINATED:
-        close(fdout);
         break;
     case PA_STREAM_READY:
-        // Just for info: no functionality in this branch
         if (1) {
             const pa_buffer_attr *a;
-            char cmt[PA_CHANNEL_MAP_SNPRINT_MAX], sst[PA_SAMPLE_SPEC_SNPRINT_MAX];
-
-            // printf("Stream successfully created.");
-
+            
             if (!(a = pa_stream_get_buffer_attr(s)))
             {
                 printf("pa_stream_get_buffer_attr() failed: %s", pa_strerror(pa_context_errno(pa_stream_get_context(s))));
@@ -139,22 +134,25 @@ void stream_state_cb(pa_stream *s, void *userdata)
             }
 
             printf("Connected to device %s (%u, %ssuspended).\n",
-            pa_stream_get_device_name(s),
-            pa_stream_get_device_index(s),
-            pa_stream_is_suspended(s) ? "" : "not ");
+                pa_stream_get_device_name(s),
+                pa_stream_get_device_index(s),
+                pa_stream_is_suspended(s) ? "" : "not ");
+
+            // TODO: getting stream info
+            // const pa_format_info* s_info = pa_stream_get_format_info(s);
 
             SF_INFO localsfinfo;
-            localsfinfo.samplerate  = 44100;
-            // localsfinfo.frames     = 123456789;
-            localsfinfo.channels    = 2;
-            localsfinfo.format 	   = SF_FORMAT_IRCAM | SF_FORMAT_PCM_16;
+            localsfinfo.samplerate = 44100;
+            localsfinfo.channels = 2;
+            localsfinfo.format = SF_FORMAT_IRCAM | SF_FORMAT_PCM_16;
 
-            if(! (localinf = sf_open_fd(p_in[1], SFM_WRITE, &localsfinfo, 0))) {
-                fprintf(stderr, "Error: could not open write pipe; %s.\n", sf_strerror (localinf)) ;
+            // This is just to write file header (sndfile complains on read otherwise)
+            if(! (writeinf = sf_open_fd(p[1], SFM_WRITE, &localsfinfo, 0))) {
+                fprintf(stderr, "Error: could not open write pipe; %s.\n", sf_strerror (writeinf)) ;
             } else {
                 printf("Using write pipe.\n");
             }
-            sf_close(localinf);
+            sf_close(writeinf);
         }
         break;
     case PA_STREAM_FAILED:
@@ -170,7 +168,7 @@ void stream_read_cb(pa_stream *s, size_t length, void *userdata)
     assert(length > 0);
 
     // Copy the data from the server out to a file
-    // fprintf(stderr, "Can read %d\n", length);
+    // printf("Can read %d\n", length);
 
     while (pa_stream_readable_size(s) > 0) {
         const void *data;
@@ -178,23 +176,36 @@ void stream_read_cb(pa_stream *s, size_t length, void *userdata)
         
         // peek actually creates and fills the data vbl
         if (pa_stream_peek(s, &data, &length) < 0) {
-        fprintf(stderr, "Read failed\n");
-        exit(1);
-        return;
+            fprintf(stderr, "Read failed\n");
+            exit(1);
+            return;
         }
-        // fprintf(stderr, "Writing %d\n", length);
-        // write(fdout, data, length); // writing to file? nah
 
+        // printf("Writing %d\n", length);
         // TODO: check length (make math happen boi)
-        // sf_write_raw(localinf, data, length);
-        write(p_in[1], data, length);
+        // sf_write_raw(writeinf, data, length);
+        write(p[1], data, length);
 
         // swallow the data peeked at before
         pa_stream_drop(s);
-
-        // pa_usec_t *latency;
-        // int *negative;
-        // pa_stream_get_latency(s, latency, negative);
-        // printf("latency: %lld\n", *latency);
     }
+}
+
+void sink_unload_cb(pa_context *c, int success, void *userdata)
+{
+    printf("\nSink module unloaded successfully!\nExiting...\n");
+    pthread_exit(0);
+}
+
+void setup_cleanup()
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = cleanup_handler;
+    sigaction(SIGPA, &sa, NULL);
+}
+
+void cleanup_handler()
+{
+    pa_context_unload_module(context, module_idx, sink_unload_cb, NULL);
 }

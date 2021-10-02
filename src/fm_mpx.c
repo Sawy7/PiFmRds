@@ -28,13 +28,13 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <math.h>
-#include <pthread.h>
 
 #include "rds.h"
 #include "pulse_virtual.h"
 
 
 #define PI 3.141592654
+#define	SIGPA 64
 
 
 #define FIR_HALF_SIZE 30 
@@ -94,11 +94,13 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
         if(pulseaudio)
         {
             if (pipe(p) < 0)
-                // TODO: ERROR MESSAGE
+            {
+                fprintf(stderr, "Error: failed to create a pipe.\n") ;
                 exit(1);
+            }
 
             pthread_create(&pa_thread_id, NULL, pulse_virtual, p);
-            pthread_detach(pa_thread_id); // TODO: make better with strategic pthread_join
+            // pthread_detach(pa_thread_id); // TODO: make better with strategic pthread_join
             
             if(! (inf = sf_open_fd(p[0], SFM_READ, &sfinfo, 0))) {
                 fprintf(stderr, "Error: could not open read pipe.\n") ;
@@ -179,7 +181,7 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
 int fm_mpx_get_samples(float *mpx_buffer) {
     get_rds_samples(mpx_buffer, length);
 
-    if(inf  == NULL) return 0; // if there is no audio, stop here
+    if(inf == NULL) return 0; // if there is no audio, stop here
     
     for(int i=0; i<length; i++) {
         if(audio_pos >= downsample_factor) {
@@ -187,6 +189,7 @@ int fm_mpx_get_samples(float *mpx_buffer) {
             
             if(audio_len == 0) {
                 for(int j=0; j<2; j++) { // one retry
+                    // printf("reading: %d\n", length*sizeof(float));
                     audio_len = sf_read_float(inf, audio_buffer, length);
                     if (audio_len < 0) {
                         fprintf(stderr, "Error reading audio\n");
@@ -278,6 +281,10 @@ int fm_mpx_close() {
     }
     
     if(audio_buffer != NULL) free(audio_buffer);
+
+    // Terminate PulseAudio thread
+    pthread_kill(pa_thread_id, SIGPA);
+    pthread_join(pa_thread_id, NULL);
     
     return 0;
 }
