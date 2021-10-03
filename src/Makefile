@@ -65,5 +65,26 @@ fm_mpx.o: fm_mpx.c fm_mpx.h
 pulse_virtual.o: pulse_virtual.c pulse_virtual.h
 	$(CC) $(CFLAGS) $<
 
+deps:
+	sudo apt update
+	sudo apt -y upgrade
+	sudo apt -y install git wget libpulse-dev libsndfile1-dev
+
+install: app
+	sudo cp pi_fm_rds /usr/bin/
+	sudo chown root /usr/bin/pi_fm_rds
+	sudo chmod +s /usr/bin/pi_fm_rds
+	sudo cp ../systemd/pi_fm_runner /usr/bin/
+	sudo chmod 777 /usr/bin/pi_fm_runner
+	mkdir -p ~/.local/share/systemd/user/
+	cp ../systemd/pi_fm_rds.service ~/.local/share/systemd/user/
+	systemctl --user enable pi_fm_rds.service
+
+uninstall:
+	systemctl --user disable pi_fm_rds.service
+	sudo rm /usr/bin/pi_fm_rds
+	sudo rm /usr/bin/pi_fm_runner
+	rm ~/.local/share/systemd/user/pi_fm_rds.service
+
 clean:
 	rm -f *.o pi_fm_rds

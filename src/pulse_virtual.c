@@ -3,7 +3,6 @@
 // global vars
 int ret;
 int *p;
-pa_mainloop *pa_ml;
 pa_context *context;
 uint32_t module_idx;
 static pa_stream *stream = NULL;
@@ -15,12 +14,12 @@ static pa_sample_spec sample_spec = {
   .channels = 2
 };
 
-void* pulse_virtual(int *pipe)
+void* pulse_virtual(void *pipe)
 {    
     setup_cleanup();
     
-    p = pipe;
-    pa_ml = pa_mainloop_new();
+    p = (int*)pipe;
+    pa_mainloop *pa_ml = pa_mainloop_new();
     pa_mainloop_api *pa_mlapi = pa_mainloop_get_api(pa_ml);
     context = pa_context_new(pa_mlapi, "pifmrds");
 
@@ -99,7 +98,7 @@ void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
         buffer_attr.tlength = (uint32_t) -1;
         buffer_attr.prebuf = (uint32_t) -1;
         buffer_attr.minreq = (uint32_t) -1;   
-        buffer_attr.fragsize = (uint32_t) 5000 * sizeof(float);
+        buffer_attr.fragsize = (uint32_t) 1024;
 
         // and start recording
         if (pa_stream_connect_record(stream, i->monitor_source_name, &buffer_attr, flags) < 0) {
@@ -186,9 +185,18 @@ void stream_read_cb(pa_stream *s, size_t length, void *userdata)
         // sf_write_raw(writeinf, data, length);
         write(p[1], data, length);
 
+        pa_usec_t latency = 0;
+        pa_stream_get_latency(s, &latency, NULL);
+        // printf("latency: %lld\n", latency);
+
         // swallow the data peeked at before
         pa_stream_drop(s);
     }
+}
+
+void stream_flushed_cb(pa_stream *s, int success, void *userdata)
+{
+    // printf("stream flushed\n");
 }
 
 void sink_unload_cb(pa_context *c, int success, void *userdata)

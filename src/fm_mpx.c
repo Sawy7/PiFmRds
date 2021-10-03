@@ -189,8 +189,8 @@ int fm_mpx_get_samples(float *mpx_buffer) {
             
             if(audio_len == 0) {
                 for(int j=0; j<2; j++) { // one retry
-                    // printf("reading: %d\n", length*sizeof(float));
                     audio_len = sf_read_float(inf, audio_buffer, length);
+                    sf_seek(inf, 0, SEEK_END); // always go to the end
                     if (audio_len < 0) {
                         fprintf(stderr, "Error reading audio\n");
                         return -1;

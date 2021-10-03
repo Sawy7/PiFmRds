@@ -1,0 +1,15 @@
+[Unit]
+Description=PA enabled version of PiFmRds
+Requires=pulseaudio.service
+After=pulseaudio.service
+
+[Service]
+Type=exec
+WorkingDirectory=/tmp
+ExecStart=/usr/bin/pi_fm_runner
+ExecStop=/usr/bin/killall --exact --wait pi_fm_rds
+RemainAfterExit=true
+TimeoutSec=10
+
+[Install]
+WantedBy=default.target

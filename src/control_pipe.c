@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "rds.h"
 #include "control_pipe.h"
@@ -37,13 +38,21 @@
 #define CTL_BUFFER_SIZE 100
 
 FILE *f_ctl;
+char *rdsh_filename = NULL;
 
 /*
  * Opens a file (pipe) to be used to control the RDS coder, in non-blocking mode.
  */
 int open_control_pipe(char *filename) {
-	int fd = open(filename, O_RDONLY | O_NONBLOCK);
-    if(fd == -1) return -1;
+	int fd = open(filename, O_RDWR);
+
+    // If the pipe doesnt exist - we create it
+    if(fd == -1) {
+        mode_t oldmask = umask(0000);
+        mkfifo(filename, 0666);
+        umask(oldmask);
+        fd = open(filename, O_RDWR);
+    }
 
 	int flags;
 	flags = fcntl(fd, F_GETFL, 0);
@@ -67,6 +76,8 @@ int poll_control_pipe() {
     char *res = fgets(buf, CTL_BUFFER_SIZE, f_ctl);
     if(res == NULL) return -1;
     if(strlen(res) > 3 && res[2] == ' ') {
+        // save rds history to file (mainly for gui reference)
+        write_rds_history(res);
         char *arg = res+3;
         if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
         if(res[0] == 'P' && res[1] == 'S') {
@@ -99,4 +110,60 @@ int poll_control_pipe() {
 int close_control_pipe() {
     if(f_ctl) return fclose(f_ctl);
     else return 0;
+}
+
+void create_rds_history(char *filename, char *ps, char *rt)
+{
+    rdsh_filename = filename;
+    
+    FILE* rdshistory = fopen(filename, "w");
+    if (ps == NULL)
+    {
+        fputs("PS <Varying>", rdshistory);
+    }
+    else
+    {
+        fputs("PS ", rdshistory);
+        fputs(ps, rdshistory);
+    }
+    fputs("\n", rdshistory);
+
+    fputs("RT ", rdshistory);
+    fputs(rt, rdshistory);
+    fputs("\n", rdshistory);
+
+    fputs("TA\n", rdshistory);
+    fclose(rdshistory);
+}
+
+void write_rds_history(char *res)
+{
+    FILE *rdshistory = fopen(rdsh_filename, "r");
+    char temp_path[strlen(rdsh_filename)+4];
+    strcpy(temp_path, rdsh_filename);
+    strcat(temp_path, ".tmp");
+    FILE *rdstemp = fopen(temp_path, "w");
+    char buf[CTL_BUFFER_SIZE];
+    while (1)
+    {
+        if (fgets(buf, CTL_BUFFER_SIZE, rdshistory) != NULL)
+        {
+            if (buf[0] == res[0] && buf[1] == res[1])
+            {
+                fputs(res, rdstemp);
+            }
+            else
+            {
+                fputs(buf, rdstemp);
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+    fclose(rdshistory);
+    fclose(rdstemp);
+    remove(rdsh_filename);
+    rename(temp_path, rdsh_filename);
 }

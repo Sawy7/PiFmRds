@@ -29,3 +29,6 @@
 extern int open_control_pipe(char *filename);
 extern int close_control_pipe();
 extern int poll_control_pipe();
+
+void create_rds_history(char *filename, char *ps, char *rt);
+void write_rds_history(char *res);

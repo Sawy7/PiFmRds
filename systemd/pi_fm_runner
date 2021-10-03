@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/pi_fm_rds -ctl /tmp/rdspipe -rdsh /tmp/rdshistory.txt -pulse -freq 87.5
