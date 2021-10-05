@@ -69,8 +69,7 @@ int fir_index = 0;
 int channels;
 
 SNDFILE *inf;
-pthread_t pa_thread_id;
-int p[2];
+int p[2]; // pipe for pulseaudio data
 
 float *alloc_empty_buffer(size_t length) {
     float *p = malloc(length * sizeof(float));
@@ -99,9 +98,8 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
                 exit(1);
             }
 
-            pthread_create(&pa_thread_id, NULL, pulse_virtual, p);
-            // pthread_detach(pa_thread_id); // TODO: make better with strategic pthread_join
-            
+            pulse_virtual(p[1]); // start threaded pulseaudio context
+
             if(! (inf = sf_open_fd(p[0], SFM_READ, &sfinfo, 0))) {
                 fprintf(stderr, "Error: could not open read pipe.\n") ;
                 return -1;
@@ -282,9 +280,8 @@ int fm_mpx_close() {
     
     if(audio_buffer != NULL) free(audio_buffer);
 
-    // Terminate PulseAudio thread
-    pthread_kill(pa_thread_id, SIGPA);
-    pthread_join(pa_thread_id, NULL);
+    // Terminate pulseaudio context
+    pulse_cleanup();
     
     return 0;
 }

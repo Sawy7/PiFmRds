@@ -242,7 +242,6 @@ udelay(int us)
 static void
 terminate(int num)
 {
-    printf("stop1\n");
     // Stop outputting and generating the clock.
     if (clk_reg && gpio_reg && mbox.virt_addr) {
         // Set GPIO4 to be an output (instead of ALT FUNC 0, which is the clock).
@@ -251,18 +250,14 @@ terminate(int num)
         // Disable the clock generator.
         clk_reg[GPCLK_CNTL] = 0x5A;
     }
-    printf("stop2\n");
 
     if (dma_reg && mbox.virt_addr) {
         dma_reg[DMA_CS] = BCM2708_DMA_RESET;
         udelay(10);
     }
-    printf("stop3\n");
     
     fm_mpx_close();
-    printf("stop4\n");
     close_control_pipe();
-    printf("stop5\n");
 
     if (mbox.virt_addr != NULL) {
         unmapmem(mbox.virt_addr, NUM_PAGES * 4096);
