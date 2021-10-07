@@ -70,6 +70,7 @@ int channels;
 
 SNDFILE *inf;
 int p[2]; // pipe for pulseaudio data
+int pa_mode = 0;
 
 float *alloc_empty_buffer(size_t length) {
     float *p = malloc(length * sizeof(float));
@@ -88,6 +89,7 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
     {
         // Open the input file
         SF_INFO sfinfo;
+        pa_mode = 1;
 
         // stdin or file on the filesystem?
         if(pulseaudio)
@@ -281,7 +283,19 @@ int fm_mpx_close() {
     if(audio_buffer != NULL) free(audio_buffer);
 
     // Terminate pulseaudio context
-    pulse_cleanup();
+    if (pa_mode)
+    {
+        pulse_cleanup();
+        if (close(p[0]) != 0)
+        {
+            fprintf(stderr, "Error: couldn't close pipe read end.");
+        }
+        if (close(p[1]) != 0)
+        {
+            fprintf(stderr, "Error: couldn't close pipe write end.");
+        }
+    }
+    
     
     return 0;
 }

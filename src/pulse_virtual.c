@@ -3,6 +3,9 @@
 // global vars
 int ret;
 int *p;
+int ended = 0;
+pa_threaded_mainloop *pa_ml;
+pa_mainloop_api *pa_mlapi;
 pa_context *context;
 uint32_t module_idx;
 pa_stream *stream = NULL;
@@ -17,9 +20,8 @@ pa_sample_spec sample_spec = {
 
 void pulse_virtual(int pipe)
 {
-    printf("hello\n");
-    pa_threaded_mainloop *pa_ml = pa_threaded_mainloop_new();
-    pa_mainloop_api *pa_mlapi = pa_threaded_mainloop_get_api(pa_ml);
+    pa_ml = pa_threaded_mainloop_new();
+    pa_mlapi = pa_threaded_mainloop_get_api(pa_ml);
     context = pa_context_new(pa_mlapi, "pi_fm_rds");
 
     pa_context_connect(context, NULL, 0, NULL);
@@ -99,8 +101,6 @@ void stream_state_cb(pa_stream *s, void *userdata)
     case PA_STREAM_CREATING:
         printf("Creating stream\n");
         break;
-    case PA_STREAM_TERMINATED:
-        break;
     case PA_STREAM_READY: ;
 
         const pa_buffer_attr *a;
@@ -138,8 +138,7 @@ void stream_state_cb(pa_stream *s, void *userdata)
         break;
     case PA_STREAM_FAILED:
     default:
-        printf("Stream error: %s", pa_strerror(pa_context_errno(pa_stream_get_context(s))));
-        exit(1);
+        printf("Stream error: %s\n", pa_strerror(pa_context_errno(pa_stream_get_context(s))));
   }
 }
 
@@ -148,7 +147,6 @@ void stream_read_cb(pa_stream *s, size_t length, void *userdata)
     assert(s);
     assert(length > 0);
 
-    // Copy the data from the server out to a file
     // printf("Can read %d\n", length);
 
     while (pa_stream_readable_size(s) > 0) {
@@ -177,12 +175,20 @@ void stream_read_cb(pa_stream *s, size_t length, void *userdata)
 
 void sink_unload_cb(pa_context *c, int success, void *userdata)
 {
-    printf("\nSink module unloaded successfully!\nExiting...\n");
-    pthread_exit(0);
+    printf("\nSink module unloaded successfully!\n");
+    __atomic_fetch_add(&ended, 1, __ATOMIC_SEQ_CST); // flipping the off switch
 }
 
 void pulse_cleanup()
 {
     pa_stream_disconnect(stream);
-    pa_context_unload_module(context, module_idx, sink_unload_cb, NULL);
+    pa_context_kill_sink_input(context, module_idx, NULL, NULL);
+    pa_operation_unref(pa_context_unload_module(context, module_idx, sink_unload_cb, NULL));
+    pa_mlapi->quit(pa_mlapi, ret);
+    pa_context_disconnect(context);
+    // while(!ended)
+    // {
+    //     printf("Waiting on module unload...\n");
+    //     sleep(1);
+    // }
 }

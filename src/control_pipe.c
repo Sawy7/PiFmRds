@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 
 #include "rds.h"
 #include "control_pipe.h"
@@ -112,28 +113,66 @@ int close_control_pipe() {
     else return 0;
 }
 
-void create_rds_history(char *filename, char *ps, char *rt)
+void create_rds_history(char *filename, struct rds_data_s *rds_data)
 {
     rdsh_filename = filename;
-    
-    FILE* rdshistory = fopen(filename, "w");
-    if (ps == NULL)
-    {
-        fputs("PS <Varying>", rdshistory);
-    }
-    else
-    {
-        fputs("PS ", rdshistory);
-        fputs(ps, rdshistory);
-    }
-    fputs("\n", rdshistory);
+    FILE* rdshistory;
 
-    fputs("RT ", rdshistory);
-    fputs(rt, rdshistory);
-    fputs("\n", rdshistory);
+    printf("RDS history: %s\n", filename);
+    // if file already exists, reuse old params
+    if(access(filename, F_OK ) == 0)
+    {
+        rdshistory = fopen(filename, "r+");
+        char res[CTL_BUFFER_SIZE];
+        while (fgets(res, CTL_BUFFER_SIZE, rdshistory))
+        {
+            char *arg = res+3;
+            if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
+            if(res[0] == 'P' && res[1] == 'S')
+            {
+                if (strcmp("PS <Varying>", arg))
+                {
+                    continue;
+                }
+                arg[8] = 0;
+                rds_data->ps = (char *) malloc(9);
+                strcpy(rds_data->ps, arg);
+                set_rds_ps(arg);
+                printf("PS set to: \"%s\"\n", arg);
+            } else if(res[0] == 'R' && res[1] == 'T') {
+                arg[64] = 0;
+                rds_data->rt = (char *) malloc(65);
+                strcpy(rds_data->rt, arg);
+                set_rds_rt(arg);
+                printf("RT set to: \"%s\"\n", arg);
+            } else if(res[0] == 'T' && res[1] == 'A') {
+                int ta = ( strcmp(arg, "ON") == 0 );
+                set_rds_ta(ta);
+                printf("Set TA to ");
+                if(ta) printf("ON\n"); else printf("OFF\n");
+            }
+        }
+    } else
+    {
+        rdshistory = fopen(filename, "w");
+        if (rds_data->ps == NULL)
+        {
+            fputs("PS <Varying>", rdshistory);
+        }
+        else
+        {
+            fputs("PS ", rdshistory);
+            fputs(rds_data->ps, rdshistory);
+        }
+        fputs("\n", rdshistory);
 
-    fputs("TA\n", rdshistory);
-    fclose(rdshistory);
+        fputs("RT ", rdshistory);
+        fputs(rds_data->rt, rdshistory);
+        fputs("\n", rdshistory);
+
+        fputs("TA\n", rdshistory);
+        fclose(rdshistory);
+    }
 }
 
 void write_rds_history(char *res)

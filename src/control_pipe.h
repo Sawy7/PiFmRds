@@ -26,9 +26,15 @@
 #define CONTROL_PIPE_RT_SET 2
 #define CONTROL_PIPE_TA_SET 3
 
+struct rds_data_s
+{
+    char *ps;
+    char *rt;
+};
+
 extern int open_control_pipe(char *filename);
 extern int close_control_pipe();
 extern int poll_control_pipe();
 
-void create_rds_history(char *filename, char *ps, char *rt);
+void create_rds_history(char *filename, struct rds_data_s *rds_data);
 void write_rds_history(char *res);

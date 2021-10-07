@@ -256,6 +256,7 @@ terminate(int num)
         udelay(10);
     }
     
+    printf("Termination in process\n");
     fm_mpx_close();
     close_control_pipe();
 
@@ -549,8 +550,11 @@ int main(int argc, char **argv) {
     int pulseaudio = 0;
     char *control_pipe = NULL;
     uint32_t carrier_freq = 107900000;
-    char *ps = NULL;
-    char *rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
+    struct rds_data_s rds_data;
+    rds_data.ps = NULL;
+    rds_data.rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
+    // char *ps = NULL;
+    // char *rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
     uint16_t pi = 0x1234;
     float ppm = 0;
     
@@ -576,10 +580,10 @@ int main(int argc, char **argv) {
             pi = (uint16_t) strtol(param, NULL, 16);
         } else if(strcmp("-ps", arg)==0 && param != NULL) {
             i++;
-            ps = param;
+            rds_data.ps = param;
         } else if(strcmp("-rt", arg)==0 && param != NULL) {
             i++;
-            rt = param;
+            rds_data.rt = param;
         } else if(strcmp("-ppm", arg)==0 && param != NULL) {
             i++;
             ppm = atof(param);
@@ -588,7 +592,7 @@ int main(int argc, char **argv) {
             control_pipe = param;
         } else if(strcmp("-rdsh", arg)==0 && param != NULL) {
             i++;
-            create_rds_history(param, ps, rt);
+            create_rds_history(param, &rds_data);
         } else {
             fatal("Unrecognised argument: %s.\n"
             "Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
@@ -596,7 +600,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, ps, rt, ppm, control_pipe);
+    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, rds_data.ps, rds_data.rt, ppm, control_pipe);
     
     terminate(errcode);
 }
