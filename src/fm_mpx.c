@@ -30,7 +30,8 @@
 #include <math.h>
 
 #include "rds.h"
-#include "pulse_virtual.h"
+// #include "pulse_virtual.h"
+#include "pulse_module.h"
 
 
 #define PI 3.141592654
@@ -69,8 +70,8 @@ int fir_index = 0;
 int channels;
 
 SNDFILE *inf;
-int p[2]; // pipe for pulseaudio data
-int pa_mode = 0;
+int pa_mode = 0; // flag
+int modulefd; // fd for pulse audio pipe
 
 float *alloc_empty_buffer(size_t length) {
     float *p = malloc(length * sizeof(float));
@@ -94,20 +95,17 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
         // stdin or file on the filesystem?
         if(pulseaudio)
         {
-            if (pipe(p) < 0)
-            {
-                fprintf(stderr, "Error: failed to create a pipe.\n") ;
-                exit(1);
-            }
+            pulse_module();
+            modulefd = open("/tmp/pifmfifo", O_RDONLY);
+            fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) | O_NONBLOCK);
 
-            pulse_virtual(p[1]); // start threaded pulseaudio context
-
-            if(! (inf = sf_open_fd(p[0], SFM_READ, &sfinfo, 0))) {
-                fprintf(stderr, "Error: could not open read pipe.\n") ;
+            if(! (inf = sf_open_fd(modulefd, SFM_READ, &sfinfo, 0))) {
+                fprintf(stderr, "Error: could not open funny.\n") ;
                 return -1;
             } else {
-                printf("Using PulseAudio sink for audio input.\n");
+                printf("Using PulseAudio funny for audio input.\n");
             }
+
         } else if(filename[0] == '-') {
             if(! (inf = sf_open_fd(fileno(stdin), SFM_READ, &sfinfo, 0))) {
                 fprintf(stderr, "Error: could not open stdin for audio input.\n") ;
@@ -190,13 +188,15 @@ int fm_mpx_get_samples(float *mpx_buffer) {
             if(audio_len == 0) {
                 for(int j=0; j<2; j++) { // one retry
                     audio_len = sf_read_float(inf, audio_buffer, length);
-                    sf_seek(inf, 0, SEEK_END); // always go to the end
                     if (audio_len < 0) {
                         fprintf(stderr, "Error reading audio\n");
                         return -1;
                     }
                     if(audio_len == 0) {
-                        if( sf_seek(inf, 0, SEEK_SET) < 0 ) {
+                        if (pa_mode) {
+                            memset(audio_buffer, 0, length);
+                            break;
+                        } else if( sf_seek(inf, 0, SEEK_SET) < 0 ) {
                             fprintf(stderr, "Could not rewind in audio file, terminating\n");
                             return -1;
                         }
@@ -285,17 +285,9 @@ int fm_mpx_close() {
     // Terminate pulseaudio context
     if (pa_mode)
     {
-        pulse_cleanup();
-        if (close(p[0]) != 0)
-        {
-            fprintf(stderr, "Error: couldn't close pipe read end.");
-        }
-        if (close(p[1]) != 0)
-        {
-            fprintf(stderr, "Error: couldn't close pipe write end.");
-        }
+        pulse_unload();
+        close(modulefd);
     }
-    
     
     return 0;
 }

@@ -30,7 +30,7 @@ CFLAGS = $(STD_CFLAGS) $(ARCH_CFLAGS) -DRASPI=$(TARGET)
 
 ifneq ($(TARGET), other)
 
-app: rds.o waveforms.o pi_fm_rds.o fm_mpx.o control_pipe.o mailbox.o pulse_virtual.o
+app: rds.o waveforms.o pi_fm_rds.o fm_mpx.o control_pipe.o mailbox.o pulse_module.o
 	$(CC) -o pi_fm_rds $^ -lm -lsndfile -lpulse -lpthread
 	sudo chown root pi_fm_rds
 	sudo chmod +s pi_fm_rds
@@ -63,6 +63,9 @@ fm_mpx.o: fm_mpx.c fm_mpx.h
 	$(CC) $(CFLAGS) $<
 
 pulse_virtual.o: pulse_virtual.c pulse_virtual.h
+	$(CC) $(CFLAGS) $<
+
+pulse_module.o: pulse_module.c pulse_module.h
 	$(CC) $(CFLAGS) $<
 
 deps:

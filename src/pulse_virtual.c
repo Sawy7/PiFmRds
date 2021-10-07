@@ -34,7 +34,10 @@ void context_state_cb(pa_context *c, void *userdata)
     if (pa_context_get_state(c) == PA_CONTEXT_READY)
     {
         printf("Server context is ready!\n");
-        pa_context_load_module(context, "module-null-sink", "sink_name=pifmsink sink_properties=device.description=FM_Speakers", sink_ready_cb, userdata);
+        // pa_context_load_module(context, "module-null-sink", "sink_name=pifmsink sink_properties=device.description=FM_Speakers", sink_ready_cb, userdata);
+    
+        // alternative with built in module:
+        pa_context_load_module(context, "module-pipe-sink", "file=/tmp/pifmfifo sink_name=pifmrds rate=44100 format=s16le sink_properties=device.description=PiFmRds", sink_ready_cb, userdata);
     }
 }
 
@@ -47,8 +50,21 @@ void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata)
     module_idx = idx;
     printf("Sink created!\n");
 
-    pa_operation *o = pa_context_get_sink_info_by_name(c, "pifmsink", sinkinfo_cb, userdata);
-    pa_operation_unref(o);
+    SF_INFO localsfinfo;
+    localsfinfo.samplerate = 44100;
+    localsfinfo.channels = 2;
+    localsfinfo.format = SF_FORMAT_IRCAM | SF_FORMAT_PCM_16;
+
+    // This is just to write file header (sndfile complains on read otherwise)
+    if(! (writeinf = sf_open_fd((int)userdata, SFM_WRITE, &localsfinfo, 0))) {
+        fprintf(stderr, "Error: could not open write pipe; %s.\n", sf_strerror (writeinf)) ;
+    } else {
+        printf("Using write pipe.\n");
+    }
+    sf_close(writeinf);
+
+    // pa_operation *o = pa_context_get_sink_info_by_name(c, "pifmsink", sinkinfo_cb, userdata);
+    // pa_operation_unref(o);
 }
 
 void sinkinfo_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)

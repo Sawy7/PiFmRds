@@ -256,7 +256,6 @@ terminate(int num)
         udelay(10);
     }
     
-    printf("Termination in process\n");
     fm_mpx_close();
     close_control_pipe();
 
@@ -515,6 +514,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
             free_slots += NUM_SAMPLES;
 
         while (free_slots >= SUBSIZE) {
+            
             // get more baseband samples if necessary
             if(data_len == 0) {
                 if( fm_mpx_get_samples(data) < 0 ) {
