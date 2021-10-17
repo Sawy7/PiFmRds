@@ -30,8 +30,22 @@ CFLAGS = $(STD_CFLAGS) $(ARCH_CFLAGS) -DRASPI=$(TARGET)
 
 ifneq ($(TARGET), other)
 
-app: rds.o waveforms.o pi_fm_rds.o fm_mpx.o control_pipe.o mailbox.o pulse_module.o
-	$(CC) -o pi_fm_rds $^ -lm -lsndfile -lpulse -lpthread
+app: rds.o waveforms.o pi_fm_rds.o fm_mpx.o control_pipe.o mailbox.o pulse_module.o dbus_mediainfo.o
+	$(CC) \
+	-I/usr/include/dbus-1.0 \
+	-I/usr/lib/arm-linux-gnueabihf/dbus-1.0/include \
+	-I/usr/include/libmount \
+	-I/usr/include/blkid \
+	-I/usr/include/uuid \
+	-I/usr/include/glib-2.0 \
+	-I/usr/lib/arm-linux-gnueabihf/glib-2.0/include \
+	-o pi_fm_rds $^ \
+	-ldbus-glib-1 \
+	-ldbus-1 \
+	-lgio-2.0 \
+	-lgobject-2.0 \
+	-lglib-2.0 \
+	-lm -lsndfile -lpulse -lpthread
 	sudo chown root pi_fm_rds
 	sudo chmod +s pi_fm_rds
 
@@ -67,6 +81,22 @@ pulse_virtual.o: pulse_virtual.c pulse_virtual.h
 
 pulse_module.o: pulse_module.c pulse_module.h
 	$(CC) $(CFLAGS) $<
+
+dbus_mediainfo.o: dbus_mediainfo.c dbus_mediainfo.h
+	$(CC) $(CFLAGS) \
+	-I/usr/include/dbus-1.0 \
+	-I/usr/lib/arm-linux-gnueabihf/dbus-1.0/include \
+	-I/usr/include/libmount \
+	-I/usr/include/blkid \
+	-I/usr/include/uuid \
+	-I/usr/include/glib-2.0 \
+	-I/usr/lib/arm-linux-gnueabihf/glib-2.0/include \
+	$< \
+	-ldbus-glib-1 \
+	-ldbus-1 \
+	-lgio-2.0 \
+	-lgobject-2.0 \
+	-lglib-2.0
 
 deps:
 	sudo apt update

@@ -78,7 +78,10 @@ int poll_control_pipe() {
     if(res == NULL) return -1;
     if(strlen(res) > 3 && res[2] == ' ') {
         // save rds history to file (mainly for gui reference)
-        write_rds_history(res);
+        if (rdsh_filename != NULL)
+        {
+            write_rds_history(res);
+        }
         char *arg = res+3;
         if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
         if(res[0] == 'P' && res[1] == 'S') {

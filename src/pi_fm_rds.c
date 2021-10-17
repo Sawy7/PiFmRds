@@ -107,6 +107,7 @@
 #include "rds.h"
 #include "fm_mpx.h"
 #include "control_pipe.h"
+#include "dbus_mediainfo.h"
 
 #include "mailbox.h"
 #define MBFILE            DEVICE_FILE_NAME    /* From mailbox.h */
@@ -317,7 +318,7 @@ map_peripheral(uint32_t base, uint32_t len)
 #define DATA_SIZE 5000
 
 
-int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, char *ps, char *rt, float ppm, char *control_pipe) {
+int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, char *ps, char *rt, float ppm, char *control_pipe, int dbus_mediainfo) {
     // Catch all signals possible - it is vital we kill the DMA engine
     // on process exit!
     for (int i = 0; i < 64; i++) {
@@ -450,6 +451,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     float data[DATA_SIZE];
     int data_len = 0;
     int data_index = 0;
+    char mediainfo[64];
 
     // Initialize the baseband generator
     if(fm_mpx_open(audio_file, pulseaudio, DATA_SIZE) < 0) return 1;
@@ -505,6 +507,19 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
         
         usleep(5000);
 
+        // polling mediaplayer2
+        if (dbus_mediainfo)
+        {
+            char new_mediainfo[64];
+            get_mediainfo(new_mediainfo, sizeof(new_mediainfo));
+            if (strcmp(new_mediainfo, mediainfo))
+            {
+                printf("Found new media\n");
+                strcpy(mediainfo, new_mediainfo);
+                set_rds_rt(mediainfo);
+            }
+        }
+
         uint32_t cur_cb = mem_phys_to_virt(dma_reg[DMA_CONBLK_AD]);
         int last_sample = (last_cb - (uint32_t)mbox.virt_addr) / (sizeof(dma_cb_t) * 2);
         int this_sample = (cur_cb - (uint32_t)mbox.virt_addr) / (sizeof(dma_cb_t) * 2);
@@ -548,6 +563,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
 int main(int argc, char **argv) {
     char *audio_file = NULL;
     int pulseaudio = 0;
+    int dbus_mediainfo = 0;
     char *control_pipe = NULL;
     uint32_t carrier_freq = 107900000;
     struct rds_data_s rds_data;
@@ -590,17 +606,28 @@ int main(int argc, char **argv) {
         } else if(strcmp("-ctl", arg)==0 && param != NULL) {
             i++;
             control_pipe = param;
-        } else if(strcmp("-rdsh", arg)==0 && param != NULL) {
+        } else if(strcmp("-dbus", arg)==0) {
+            i++;
+            dbus_mediainfo = 1;
+            rds_data.ps = "MEDIAINF";
+        }
+         else if(strcmp("-rdsh", arg)==0 && param != NULL) {
             i++;
             create_rds_history(param, &rds_data);
         } else {
             fatal("Unrecognised argument: %s.\n"
             "Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
-            "                  [-ps ps_text] [-rt rt_text] [-ctl control_pipe]\n", arg);
+            "                  [-ps ps_text] [-rt rt_text] [-ctl control_pipe]\n"
+            "                  [-rdsh history_file] [-pulse]\n", arg);
         }
     }
+
+    if (control_pipe != NULL && dbus_mediainfo)
+    {
+        fatal("Error: Arguments -dbus and -ctl cannot be run together. Pick one!\n");
+    }
     
-    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, rds_data.ps, rds_data.rt, ppm, control_pipe);
+    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, rds_data.ps, rds_data.rt, ppm, control_pipe, dbus_mediainfo);
     
     terminate(errcode);
 }
