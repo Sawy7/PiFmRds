@@ -514,8 +514,8 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
             get_mediainfo(new_mediainfo, sizeof(new_mediainfo));
             if (strcmp(new_mediainfo, mediainfo))
             {
-                printf("Found new media\n");
                 strcpy(mediainfo, new_mediainfo);
+                printf("Player: Media changed to %s\n", mediainfo);
                 set_rds_rt(mediainfo);
             }
         }
@@ -569,8 +569,6 @@ int main(int argc, char **argv) {
     struct rds_data_s rds_data;
     rds_data.ps = NULL;
     rds_data.rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
-    // char *ps = NULL;
-    // char *rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
     uint16_t pi = 0x1234;
     float ppm = 0;
     
@@ -607,7 +605,6 @@ int main(int argc, char **argv) {
             i++;
             control_pipe = param;
         } else if(strcmp("-dbus", arg)==0) {
-            i++;
             dbus_mediainfo = 1;
             rds_data.ps = "MEDIAINF";
         }

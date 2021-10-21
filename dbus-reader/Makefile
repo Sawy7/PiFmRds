@@ -19,9 +19,6 @@ dbus-reader: dbus-reader.c dbus-reader.h
 	-lgio-2.0 \
 	-lgobject-2.0 \
 	-lglib-2.0
-	sudo chown root $@
-	sudo chmod +s $@
-
 
 deps:
 	sudo apt-get -y install dbus libdbus-1-dev libdbus-glib-1-2 libdbus-glib-1-dev

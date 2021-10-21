@@ -54,6 +54,7 @@ int get_mediainfo(char *mediainfo, int bytes)
             {
                 if (get_metadata(names[i], mediainfo, bytes/sizeof(char)) != 0)
                 {
+                    fprintf(stderr, "Error: Could not get mediainfo.\n");
                     return -3;
                 }
                 break;
@@ -64,6 +65,8 @@ int get_mediainfo(char *mediainfo, int bytes)
     g_object_unref(proxy);
     g_variant_unref(reply);
     g_variant_unref(reply_child);
+    g_free(names);
+    g_free(tmp_error);
 
     seteuid(0);
     return 0;
@@ -95,8 +98,11 @@ int get_playback_status(const char *player)
     GVariant *parameters_array[2];
 
     parameters_array[0] = g_variant_new("s", "org.mpris.MediaPlayer2.Player");
+    g_variant_ref(parameters_array[0]);
     parameters_array[1] = g_variant_new("s", "PlaybackStatus");
+    g_variant_ref(parameters_array[1]);
     parameters = g_variant_new_tuple(parameters_array, 2);
+    g_variant_ref(parameters);
     
     GVariant *reply = g_dbus_proxy_call_sync(
         proxy, "Get", parameters, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
@@ -115,6 +121,10 @@ int get_playback_status(const char *player)
 
     g_object_unref(proxy);
     g_variant_unref(reply);
+    g_variant_unref(parameters);
+    g_variant_unref(parameters_array[0]);
+    g_variant_unref(parameters_array[1]);
+    g_free(tmp_error);
 
     return found;
 }
@@ -144,8 +154,11 @@ int get_metadata(const char *player, char *metadata, int bytes)
     GVariant *parameters_array[2];
 
     parameters_array[0] = g_variant_new("s", "org.mpris.MediaPlayer2.Player");
+    g_variant_ref(parameters_array[0]);
     parameters_array[1] = g_variant_new("s", "Metadata");
+    g_variant_ref(parameters_array[1]);
     parameters = g_variant_new_tuple(parameters_array, 2);
+    g_variant_ref(parameters);
     
     GVariant *reply = g_dbus_proxy_call_sync(
         proxy, "Get", parameters, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
@@ -158,12 +171,16 @@ int get_metadata(const char *player, char *metadata, int bytes)
     GVariant *props;
 
     g_variant_get(reply, "(v)", &props);
-    gchar **artist = NULL, *title = NULL;
-    g_variant_lookup(props, "xesam:artist", "^a&s", &artist);
+    gchar **artists = NULL, *artist = NULL, *title = NULL;
+    g_variant_lookup(props, "xesam:artist", "^a&s", &artists);
 	g_variant_lookup(props, "xesam:title", "s", &title);
 
-    // Make it work with multiple artists
-    snprintf(metadata, bytes/sizeof(char), "%s - %s", artist[0], title);
+    // TODO: Make it work with multiple artists
+    if (artists && title)
+    {
+        artist = g_strjoinv(", ", artists);
+        snprintf(metadata, bytes/sizeof(char), "%s - %s", (char*)artist, (char*)title);
+    }
 
     // if (artist)
     // {
@@ -176,8 +193,14 @@ int get_metadata(const char *player, char *metadata, int bytes)
 
     g_object_unref(proxy);
     g_variant_unref(reply);
+    g_variant_unref(props);
+    g_variant_unref(parameters);
+    g_variant_unref(parameters_array[0]);
+    g_variant_unref(parameters_array[1]);
     g_free(artist);
+    g_free(artists);
 	g_free(title);
+    g_free(tmp_error);
     
     return 0;
 }
