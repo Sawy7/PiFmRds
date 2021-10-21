@@ -103,6 +103,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sndfile.h>
+#include <pthread.h>
 
 #include "rds.h"
 #include "fm_mpx.h"
@@ -451,7 +452,8 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     float data[DATA_SIZE];
     int data_len = 0;
     int data_index = 0;
-    char mediainfo[64];
+    char mediainfo[65];
+    char mediainfo_new[65];
 
     // Initialize the baseband generator
     if(fm_mpx_open(audio_file, pulseaudio, DATA_SIZE) < 0) return 1;
@@ -482,7 +484,14 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
             control_pipe = NULL;
         }
     }
-    
+
+    // Initialize dbus_mediainfo
+    if(dbus_mediainfo)
+    {
+        strcpy(mediainfo_new, "NO MEDIA");
+        pthread_t thread_id;
+        pthread_create(&thread_id, NULL, dbus_main, (void*)mediainfo_new);
+    }    
     
     printf("Starting to transmit on %3.1f MHz.\n", carrier_freq/1e6);
 
@@ -508,15 +517,15 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
         usleep(5000);
 
         // polling mediaplayer2
+        // TODO: Sanitize no-ID3 files
+        // TODO: VLC not switching metadata in playlist - needs fix
         if (dbus_mediainfo)
         {
-            char new_mediainfo[64];
-            get_mediainfo(new_mediainfo, sizeof(new_mediainfo));
-            if (strcmp(new_mediainfo, mediainfo))
+            if (strcmp(mediainfo_new, mediainfo) != 0)
             {
-                strcpy(mediainfo, new_mediainfo);
-                printf("Player: Media changed to %s\n", mediainfo);
+                strcpy(mediainfo, mediainfo_new);
                 set_rds_rt(mediainfo);
+                printf("Mediainfo changed: %s\n", mediainfo);
             }
         }
 

@@ -5,6 +5,7 @@
 // https://gist.github.com/grawity/5cfba06c70addcbcabfe
 
 static GMainLoop *loop = NULL;
+char metadata_text[65] = "NO MEDIA";
 
 int GetPlaybackStatus(const char *player)
 {
@@ -160,21 +161,8 @@ int AddSignal(const char *player)
     GVariant *props;
 
     g_variant_get(reply, "(v)", &props);
-    gchar **artists = NULL, *title = NULL;
-    g_variant_lookup(props, "xesam:artist", "^a&s", &artists);
-	g_variant_lookup(props, "xesam:title", "s", &title);
-
-    // gchar *parameters_str = g_variant_print(props, TRUE);
-    // g_print ("%s\n", parameters_str);
-
-    if (artists)
-    {
-        g_printf("Artists: %s\n", g_strjoinv(", ", artists));
-    }
-    if (title)
-    {
-        g_printf("Title: %s\n", title);
-    }
+    
+    export_metadata(props);
 
     g_signal_connect(get_props_proxy,
                     "g-signal",
@@ -190,8 +178,6 @@ int AddSignal(const char *player)
 
     g_object_unref(get_props_proxy);
     g_variant_unref(reply);
-    g_free(artists);
-	g_free(title);
     
     return 0;
 }
@@ -225,22 +211,24 @@ void on_signal (GDBusProxy *proxy,
         // parameters_str = g_variant_print(metadata, TRUE);
         // g_print ("%s\n", parameters_str);
 
-        gchar **artists = NULL, *title = NULL;
-        g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
-        g_variant_lookup(metadata, "xesam:title", "s", &title);
+        // gchar **artists = NULL, *title = NULL;
+        // g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
+        // g_variant_lookup(metadata, "xesam:title", "s", &title);
 
-        if (artists)
-        {
-            g_printf("Artists: %s\n", g_strjoinv(", ", artists));
-        }
-        if (title)
-        {
-            g_printf("Title: %s\n", title);
-        }
+        // if (artists)
+        // {
+        //     g_printf("Artists: %s\n", g_strjoinv(", ", artists));
+        // }
+        // if (title)
+        // {
+        //     g_printf("Title: %s\n", title);
+        // }
+
+        export_metadata(metadata);
 
         g_variant_unref(metadata);
-        g_free(artists);
-        g_free(title);
+        // g_free(artists);
+        // g_free(title);
     }
     
     g_variant_unref(child);
@@ -253,6 +241,18 @@ void on_signal (GDBusProxy *proxy,
     
 }
 
+void export_metadata(GVariant *metadata)
+{
+    gchar **artists = NULL, *title = NULL;
+    g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
+    g_variant_lookup(metadata, "xesam:title", "s", &title);
+
+    snprintf(metadata_text, sizeof(metadata_text), "%s - %s", g_strjoinv(", ", artists), title);
+
+    g_free(artists);
+    g_free(title);
+}
+
 void on_name_owner_notify (GObject    *object,
                       GParamSpec *pspec,
                       gpointer    user_data)
@@ -261,13 +261,25 @@ void on_name_owner_notify (GObject    *object,
     g_main_loop_quit(loop);
 }
 
-int main()
-{   
+void *thread_main(void *userdata)
+{
     NewDBus();
     while (1)
     {
         GetMetaCombined();
         sleep(3);
+    }
+}
+
+int main()
+{
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, thread_main, NULL);
+
+    while (1)
+    {
+        printf("Main thread: %s\n", metadata_text);
+        sleep(5);
     }
     
     return 0;

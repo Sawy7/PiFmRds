@@ -7,6 +7,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gprintf.h>
+#include <pthread.h>
 
 #define MPRIS_PREFIX "org.mpris.MediaPlayer2."
 
@@ -20,6 +21,8 @@ void on_signal (GDBusProxy *proxy,
            gchar      *signal_name,
            GVariant   *parameters,
            gpointer    user_data);
+void export_metadata(GVariant *metadata);
 void on_name_owner_notify (GObject    *object,
                       GParamSpec *pspec,
                       gpointer    user_data);
+void *thread_main(void *userdata);

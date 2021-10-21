@@ -8,74 +8,98 @@
 #include <dbus/dbus.h>
 #include <gio/gio.h>
 #include <glib.h>
-#include <glib/gprintf.h>
 
-int get_mediainfo(char *mediainfo, int bytes)
+GError *tmp_error;
+GDBusProxy *get_names_proxy;
+GDBusProxy *get_props_proxy;
+static GMainLoop *loop = NULL;
+char *metadata_text = NULL;
+
+void *dbus_main(void *userdata)
 {
-    seteuid(getuid());
-    snprintf(mediainfo, bytes/sizeof(char), "NO MEDIA PLAYING");
+    metadata_text = (char*)userdata;
+    
+    // TODO: Error handling needs work
+    if (create_dbus() != 0)
+    {
+        fprintf(stderr, "Error: Could not connect to DBus.\n");
+        return NULL;
+    }
+    
+    while (1)
+    {
+        if (get_metadata() != 0)
+        {
+            fprintf(stderr, "Error: Could not get metadata.\n");
+            return NULL;
+        }
+        sleep(3);
+    }
 
-    GError *tmp_error = NULL;
+    return NULL;
+}
+
+int create_dbus()
+{
+    seteuid(getuid()); // This needs to run as normal user
+    tmp_error = NULL;
 
     // Connect to DBus
-    GDBusProxy *proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-                                                      G_DBUS_PROXY_FLAGS_NONE,
-                                                      NULL,
-                                                      "org.freedesktop.DBus",
-                                                      "/org/freedesktop/DBus",
-                                                      "org.freedesktop.DBus",
-                                                      NULL,
-                                                      &tmp_error);
+    get_names_proxy = g_dbus_proxy_new_for_bus_sync( G_BUS_TYPE_SESSION,
+                                                     G_DBUS_PROXY_FLAGS_NONE,
+                                                     NULL,
+                                                     "org.freedesktop.DBus",
+                                                     "/org/freedesktop/DBus",
+                                                     "org.freedesktop.DBus",
+                                                     NULL,
+                                                     &tmp_error);
 
     // Check for errors
     if (tmp_error != NULL) {
-        fprintf(stderr, "Could not connect to DBus.\n");
         return -1;
     }
 
+    seteuid(0);
+    return 0;
+}
+
+int get_metadata()
+{
     // Call method (listing all players)
-    GVariant *reply = g_dbus_proxy_call_sync(proxy, "ListNames", NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
+    GVariant *reply = g_dbus_proxy_call_sync(get_names_proxy, "ListNames", NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
 
     // Check for errors
     if (tmp_error != NULL) {
-        g_object_unref(proxy);
-        fprintf(stderr, "DBus method call failed.\n");
-        return -2;
+        g_object_unref(get_names_proxy);
+        return -1;
     }
 
     // Getting array of players
     GVariant *reply_child = g_variant_get_child_value(reply, 0);
     gsize reply_count;
     const gchar **names = g_variant_get_strv(reply_child, &reply_count);
-
+   
     for (gsize i = 0; i < reply_count; i += 1) {
         if (g_str_has_prefix(names[i], "org.mpris.MediaPlayer2.")) {
-            if (get_playback_status(names[i]) == 1)
+            if (get_playback_status(names[i]) == 0)
             {
-                if (get_metadata(names[i], mediainfo, bytes/sizeof(char)) != 0)
-                {
-                    fprintf(stderr, "Error: Could not get mediainfo.\n");
-                    return -3;
-                }
-                break;
+                // printf("%s is playing.\n", names[i]);
+                // Hook into this player
+                add_signal(names[i]);
             }
         }
     }
-    
-    g_object_unref(proxy);
+
     g_variant_unref(reply);
     g_variant_unref(reply_child);
     g_free(names);
-    g_free(tmp_error);
 
-    seteuid(0);
     return 0;
 }
 
 int get_playback_status(const char *player)
 {
     GError *tmp_error = NULL;
-    int found = 0;
 
     GDBusProxy *proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                       G_DBUS_PROXY_FLAGS_NONE,
@@ -94,14 +118,13 @@ int get_playback_status(const char *player)
         return -2;
     }
 
-    GVariant *parameters;
     GVariant *parameters_array[2];
 
     parameters_array[0] = g_variant_new("s", "org.mpris.MediaPlayer2.Player");
     g_variant_ref(parameters_array[0]);
     parameters_array[1] = g_variant_new("s", "PlaybackStatus");
     g_variant_ref(parameters_array[1]);
-    parameters = g_variant_new_tuple(parameters_array, 2);
+    GVariant *parameters = g_variant_new_tuple(parameters_array, 2);
     g_variant_ref(parameters);
     
     GVariant *reply = g_dbus_proxy_call_sync(
@@ -109,31 +132,29 @@ int get_playback_status(const char *player)
 
     if (tmp_error != NULL) {
         g_object_unref(proxy);
-        return -2;
+        return -3;
     }
 
-    // printf("PlaybackStatus: %s\n", ((char*)g_variant_get_data(reply)));
+    int playbackReturn = -1;
     if (strcmp((char*)g_variant_get_data(reply), "Playing") == 0)
     {
-        found = 1;
+        playbackReturn = 0;
     }
     
-
     g_object_unref(proxy);
     g_variant_unref(reply);
     g_variant_unref(parameters);
     g_variant_unref(parameters_array[0]);
     g_variant_unref(parameters_array[1]);
-    g_free(tmp_error);
 
-    return found;
+    return playbackReturn;
 }
 
-int get_metadata(const char *player, char *metadata, int bytes)
+int add_signal(const char *player)
 {
-    GError *tmp_error = NULL;
+    loop = g_main_loop_new (NULL, FALSE);
 
-    GDBusProxy *proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+    get_props_proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                       G_DBUS_PROXY_FLAGS_NONE,
                                                       NULL,
                                                       player,
@@ -154,53 +175,87 @@ int get_metadata(const char *player, char *metadata, int bytes)
     GVariant *parameters_array[2];
 
     parameters_array[0] = g_variant_new("s", "org.mpris.MediaPlayer2.Player");
-    g_variant_ref(parameters_array[0]);
     parameters_array[1] = g_variant_new("s", "Metadata");
-    g_variant_ref(parameters_array[1]);
     parameters = g_variant_new_tuple(parameters_array, 2);
-    g_variant_ref(parameters);
-    
+
     GVariant *reply = g_dbus_proxy_call_sync(
-        proxy, "Get", parameters, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
+        get_props_proxy, "Get", parameters, G_DBUS_CALL_FLAGS_NONE, -1, NULL, &tmp_error);
 
     if (tmp_error != NULL) {
-        g_object_unref(proxy);
+        g_object_unref(get_props_proxy);
         return -2;
     }
 
     GVariant *props;
 
     g_variant_get(reply, "(v)", &props);
-    gchar **artists = NULL, *artist = NULL, *title = NULL;
-    g_variant_lookup(props, "xesam:artist", "^a&s", &artists);
-	g_variant_lookup(props, "xesam:title", "s", &title);
+    
+    export_metadata(props);
 
-    // TODO: Make it work with multiple artists
-    if (artists && title)
-    {
-        artist = g_strjoinv(", ", artists);
-        snprintf(metadata, bytes/sizeof(char), "%s - %s", (char*)artist, (char*)title);
-    }
+    g_signal_connect(get_props_proxy,
+                    "g-signal",
+                    G_CALLBACK (on_signal),
+                    NULL);
 
-    // if (artist)
-    // {
-    //     g_printf("Artists: %s\n", g_strjoinv(", ", artists));
-    // }
-    // if (title)
-    // {
-    //     g_printf("Title: %s\n", title);
-    // }
+    g_signal_connect(get_props_proxy,
+                    "notify::g-name-owner",
+                    G_CALLBACK (on_name_owner_notify),
+                    NULL);
 
-    g_object_unref(proxy);
+    g_main_loop_run(loop);
+
+    g_object_unref(get_props_proxy);
     g_variant_unref(reply);
-    g_variant_unref(props);
-    g_variant_unref(parameters);
-    g_variant_unref(parameters_array[0]);
-    g_variant_unref(parameters_array[1]);
-    g_free(artist);
-    g_free(artists);
-	g_free(title);
-    g_free(tmp_error);
     
     return 0;
+}
+
+void export_metadata(GVariant *metadata)
+{
+    gchar **artists = NULL, *title = NULL;
+    g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
+    g_variant_lookup(metadata, "xesam:title", "s", &title);
+
+    snprintf(metadata_text, METADATA_TEXT_SIZE, "%s - %s", g_strjoinv(", ", artists), title);
+
+    g_free(artists);
+    g_free(title);
+}
+
+void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data)
+{
+    int exit_loop = 0;
+    gchar *parameters_str;
+
+    GVariant *child = g_variant_get_child_value(parameters, 1);
+    if (g_variant_lookup(child, "PlaybackStatus", "s", &parameters_str))
+    {
+        if (strcmp((char*)parameters_str, "Paused") == 0)
+        {
+            exit_loop = 1;
+        }
+
+        g_free (parameters_str);
+    }
+    else if (g_variant_lookup(child, "Metadata", "a{sv}", &parameters_str))
+    {
+        GVariant *metadata = g_variant_lookup_value(child, "Metadata", G_VARIANT_TYPE_DICTIONARY);
+        export_metadata(metadata);
+        
+        g_variant_unref(metadata);
+    }
+    
+    g_variant_unref(child);
+
+    if (exit_loop)
+    {
+        // printf("Exiting loop\n");
+        g_main_loop_quit(loop);
+    }
+}
+
+void on_name_owner_notify (GObject *object, GParamSpec *pspec, gpointer user_data)
+{
+    // printf("Exiting loop\n");
+    g_main_loop_quit(loop);
 }
