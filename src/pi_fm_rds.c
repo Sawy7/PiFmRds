@@ -452,8 +452,10 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     float data[DATA_SIZE];
     int data_len = 0;
     int data_index = 0;
-    char mediainfo[65];
-    char mediainfo_new[65];
+
+    // Data structures for mediainfo
+    char mediainfo[64];
+    char mediainfo_new[64];
 
     // Initialize the baseband generator
     if(fm_mpx_open(audio_file, pulseaudio, DATA_SIZE) < 0) return 1;
@@ -489,6 +491,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     if(dbus_mediainfo)
     {
         strcpy(mediainfo_new, "NO MEDIA");
+        // TODO: Maybe end this thread gracefully somehow?
         pthread_t thread_id;
         pthread_create(&thread_id, NULL, dbus_main, (void*)mediainfo_new);
     }    
@@ -503,7 +506,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
                 set_rds_ps(myps);
                 count2++;
             }
-            if(count == 1024) {
+            else if(count == 1024) {
                 set_rds_ps("RPi-Live");
                 count = 0;
             }
@@ -517,8 +520,6 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
         usleep(5000);
 
         // polling mediaplayer2
-        // TODO: Sanitize no-ID3 files
-        // TODO: VLC not switching metadata in playlist - needs fix
         if (dbus_mediainfo)
         {
             if (strcmp(mediainfo_new, mediainfo) != 0)
@@ -527,7 +528,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
                 set_rds_rt(mediainfo);
                 printf("Mediainfo changed: %s\n", mediainfo);
             }
-        }
+        }      
 
         uint32_t cur_cb = mem_phys_to_virt(dma_reg[DMA_CONBLK_AD]);
         int last_sample = (last_cb - (uint32_t)mbox.virt_addr) / (sizeof(dma_cb_t) * 2);

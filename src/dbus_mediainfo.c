@@ -216,7 +216,15 @@ void export_metadata(GVariant *metadata)
     g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
     g_variant_lookup(metadata, "xesam:title", "s", &title);
 
-    snprintf(metadata_text, METADATA_TEXT_SIZE, "%s - %s", g_strjoinv(", ", artists), title);
+    // Song must have well defined ID3 (or equivalent) metadata
+    if (artists && title)
+    {
+        snprintf(metadata_text, METADATA_TEXT_SIZE, "%s - %s", g_strjoinv(", ", artists), title);
+    }
+    else
+    {
+        snprintf(metadata_text, METADATA_TEXT_SIZE, "NO METADATA");
+    }
 
     g_free(artists);
     g_free(title);
@@ -228,6 +236,10 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
     gchar *parameters_str;
 
     GVariant *child = g_variant_get_child_value(parameters, 1);
+
+    // gchar *value_str = g_variant_print(child, TRUE);
+    // printf("md: %s\n", (char*)value_str);
+
     if (g_variant_lookup(child, "PlaybackStatus", "s", &parameters_str))
     {
         if (strcmp((char*)parameters_str, "Paused") == 0)
@@ -250,6 +262,7 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
     if (exit_loop)
     {
         // printf("Exiting loop\n");
+        snprintf(metadata_text, METADATA_TEXT_SIZE, "NO MEDIA");
         g_main_loop_quit(loop);
     }
 }
@@ -257,5 +270,6 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
 void on_name_owner_notify (GObject *object, GParamSpec *pspec, gpointer user_data)
 {
     // printf("Exiting loop\n");
+    snprintf(metadata_text, METADATA_TEXT_SIZE, "NO MEDIA");
     g_main_loop_quit(loop);
 }

@@ -100,10 +100,10 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
             fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) | O_NONBLOCK);
 
             if(! (inf = sf_open_fd(modulefd, SFM_READ, &sfinfo, 0))) {
-                fprintf(stderr, "Error: could not open funny.\n") ;
+                fprintf(stderr, "Error: could not open pulse sink.\n") ;
                 return -1;
             } else {
-                printf("Using PulseAudio funny for audio input.\n");
+                printf("Using PulseAudio sink for audio input.\n");
             }
 
         } else if(filename[0] == '-') {
