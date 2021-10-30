@@ -14,12 +14,31 @@ def toggle_transmission(switch, state, win_layout):
         os.system("systemctl --user stop pi_fm_rds")
     reset_window(win_layout, state)
 
+def toggle_metadata(switch, state, win_layout):
+    switch_rds_metadata(state)
+    reset_window(win_layout, True)
+
 def change_freq(button, freq_spin):
     file_content = None
     with open("/usr/bin/pi_fm_runner", "r") as f:
         file_content = f.read()
         new_freq = freq_spin.get_text().replace(",", ".")
         file_content = re.sub("-freq \d*.\d*", f"-freq {new_freq}", file_content)
+
+    with open("/usr/bin/pi_fm_runner", "w") as f:
+        f.write(file_content)
+
+    os.system("systemctl --user restart pi_fm_rds")
+    reset_window(win_layout, True)
+
+def switch_rds_metadata(state):
+    file_content = None
+    with open("/usr/bin/pi_fm_runner", "r") as f:
+        file_content = f.read()
+        if state:
+            file_content = re.sub("-ctl rdspipe -rdsh rdshistory.txt", f"-dbus", file_content)
+        else:
+            file_content = re.sub("-dbus", f"-ctl rdspipe -rdsh rdshistory.txt", file_content)
 
     with open("/usr/bin/pi_fm_runner", "w") as f:
         f.write(file_content)
@@ -47,9 +66,29 @@ def station_changing(entry, entry_name, history_value):
         Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
 
+def disable_entry(entry, entry_name):
+    entry.set_editable(False)
+    style_provider = Gtk.CssProvider()
+    bg_color = "#86929A"
+    css = "#" + entry_name + "{ background:" +  bg_color + "; }"
+    style_provider.load_from_data(bytes(css.encode()))
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(), style_provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
 def is_service_running():
     fmstatus = os.system("systemctl --user is-active --quiet pi_fm_rds")
     if fmstatus == 0:
+        return True
+    else:
+        return False
+
+def is_metadata_on():
+    file_content = None
+    with open("/usr/bin/pi_fm_runner", "r") as f:
+        file_content = f.read()
+    if re.search("-dbus", file_content) is not None:
         return True
     else:
         return False
@@ -90,6 +129,8 @@ def populate_window(win_layout, state):
         fmstatus_label.set_text(fmstatus)
         win_left.add(fmstatus_label)
         fmstatus_label.show()
+
+        rds_metadata_state = is_metadata_on()
         
         freq = str(subprocess.check_output("systemctl --user status pi_fm_rds | grep freq", shell=True))
         freq = re.findall("-freq (\d*.\d*)", freq)[0]
@@ -140,8 +181,12 @@ def populate_window(win_layout, state):
         station_text_label.show()
         station_text.show()
 
-        station_name.set_text(rds_history["station_name"])
-        station_text.set_text(rds_history["station_text"])
+        if rds_metadata_state:
+            disable_entry(station_name, "station_name")
+            disable_entry(station_text, "station_text")
+        else:
+            station_name.set_text(rds_history["station_name"])
+            station_text.set_text(rds_history["station_text"])
 
         rds_button = Gtk.Button(label="Change RDS")
         rds_button.connect("clicked", change_rds, station_name, station_text, rds_history)
@@ -149,6 +194,18 @@ def populate_window(win_layout, state):
         win_right.attach(rds_button, 0,2,2,1)
         rds_button.show()
         rds_button.grab_focus()
+
+        rds_metadata_label = Gtk.Label()
+        rds_metadata_label.set_text("Auto-RDS")
+        rds_metadata_label.set_margin_top(20)
+        win_right.attach(rds_metadata_label, 0,3,1,1)
+        rds_metadata_label.show()
+        rds_metadata = Gtk.Switch()
+        rds_metadata.set_state(rds_metadata_state)
+        rds_metadata.connect("state-set", toggle_metadata, win_layout)
+        rds_metadata.set_margin_top(20)
+        win_right.attach(rds_metadata, 1,3,1,1)
+        rds_metadata.show()
 
     else:
         fmstatus = "Dead"
