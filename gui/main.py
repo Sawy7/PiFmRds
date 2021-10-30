@@ -6,6 +6,8 @@ import gi, os, subprocess, re
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
+# TODO: Make app fetch data periodically
+
 class Window:
     def __init__(self, width, height):
         self.win = Gtk.Window()
@@ -15,6 +17,7 @@ class Window:
         self.setup_autords_object()
         self.setup_rds_object()
         self.setup_headerbar()
+        self.setup_statusicon()
 
     def setup_window(self, width, height):
         self.win.set_default_size(width, height)
@@ -41,6 +44,20 @@ class Window:
         kill_switch.connect("state-set", self.transmission.toggle)
         self.header_bar.pack_start(kill_switch)
 
+    def setup_statusicon(self):
+        self.window_hidden = False
+        self.statusicon = Gtk.StatusIcon()
+        self.statusicon.set_from_file("/home/pi/sound-off-icon-40944.png") # TODO: Find/make image
+        self.statusicon.connect('button-press-event', self.statusicon_react)
+
+    def statusicon_react(self, *args): # TODO: Make a menu
+        if self.window_hidden:
+            self.win.deiconify()
+            self.win.present()
+        else:
+            self.win.hide()
+        self.window_hidden = not self.window_hidden
+
     def create_layout(self):
         self.win_layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.win_left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=50)
@@ -57,9 +74,6 @@ class Window:
         self.win_layout.add(self.win_right)
     
     def populate_window(self):
-        # self.win_left = self.win_layout.get_children()[0]
-        # self.win_right = self.win_layout.get_children()[2] # 1 is separator
-        
         self.fmstatus_label = Gtk.Label()
 
         # Getting metadata state (if Auto-RDS is on)
@@ -76,8 +90,14 @@ class Window:
             self.fmstatus_label.show()
 
         self.win.add(self.win_layout)
-        self.win.connect("destroy", Gtk.main_quit)
+        self.win.connect("destroy", Gtk.main_quit) # TODO: Make into tray
+        self.win.connect("window-state-event", self.winevent_react)
         self.win.show_all()
+
+    def winevent_react(self, window, event):
+        if event.changed_mask & Gdk.WindowState.ICONIFIED:
+            if event.new_window_state & Gdk.WindowState.ICONIFIED:
+                self.statusicon_react()
 
     def populate_left_win(self):
         # Play icon
