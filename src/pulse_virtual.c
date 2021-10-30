@@ -135,9 +135,6 @@ void stream_state_cb(pa_stream *s, void *userdata)
             pa_stream_get_device_index(s),
             pa_stream_is_suspended(s) ? "" : "not ");
 
-        // TODO: getting stream info
-        // const pa_format_info* s_info = pa_stream_get_format_info(s);
-
         SF_INFO localsfinfo;
         localsfinfo.samplerate = 44100;
         localsfinfo.channels = 2;

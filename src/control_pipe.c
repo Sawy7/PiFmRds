@@ -71,7 +71,7 @@ int open_control_pipe(char *filename) {
  * Polls the control file (pipe), non-blockingly, and if a command is received,
  * processes it and updates the RDS data.
  */
-int poll_control_pipe() {
+int poll_control_pipe(int dbus_mediainfo) {
 	static char buf[CTL_BUFFER_SIZE];
 
     char *res = fgets(buf, CTL_BUFFER_SIZE, f_ctl);
@@ -91,9 +91,16 @@ int poll_control_pipe() {
             return CONTROL_PIPE_PS_SET;
         }
         if(res[0] == 'R' && res[1] == 'T') {
-            arg[64] = 0;
-            set_rds_rt(arg);
-            printf("RT set to: \"%s\"\n", arg);
+            if (dbus_mediainfo)
+            {
+                printf("RT was not set. Pulling from metadata.\n");
+            }
+            else
+            {
+                arg[64] = 0;
+                set_rds_rt(arg);
+                printf("RT set to: \"%s\"\n", arg);
+            }
             return CONTROL_PIPE_RT_SET;
         }
         if(res[0] == 'T' && res[1] == 'A') {

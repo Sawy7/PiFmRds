@@ -104,6 +104,7 @@
 #include <sys/mman.h>
 #include <sndfile.h>
 #include <pthread.h>
+#include <sys/syscall.h>
 
 #include "rds.h"
 #include "fm_mpx.h"
@@ -233,6 +234,8 @@ struct control_data_s {
 
 static struct control_data_s *ctl;
 
+pthread_t dbus_thread_id;
+
 static void
 udelay(int us)
 {
@@ -244,6 +247,11 @@ udelay(int us)
 static void
 terminate(int num)
 {
+    pid_t x = syscall(__NR_gettid);
+    quit_dbus_thread();
+    printf("Termination is here %d\n", x);
+    pthread_join(dbus_thread_id, NULL); // TODO: Only do this if -dbus
+
     // Stop outputting and generating the clock.
     if (clk_reg && gpio_reg && mbox.virt_addr) {
         // Set GPIO4 to be an output (instead of ALT FUNC 0, which is the clock).
@@ -492,8 +500,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     {
         strcpy(mediainfo_new, "NO MEDIA");
         // TODO: Maybe end this thread gracefully somehow?
-        pthread_t thread_id;
-        pthread_create(&thread_id, NULL, dbus_main, (void*)mediainfo_new);
+        pthread_create(&dbus_thread_id, NULL, dbus_main, (void*)mediainfo_new);
     }    
     
     printf("Starting to transmit on %3.1f MHz.\n", carrier_freq/1e6);
@@ -513,7 +520,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
             count++;
         }
         
-        if(control_pipe && poll_control_pipe() == CONTROL_PIPE_PS_SET) {
+        if(control_pipe && poll_control_pipe(dbus_mediainfo) == CONTROL_PIPE_PS_SET) {
             varying_ps = 0;
         }
         
@@ -616,7 +623,10 @@ int main(int argc, char **argv) {
             control_pipe = param;
         } else if(strcmp("-dbus", arg)==0) {
             dbus_mediainfo = 1;
-            rds_data.ps = "MEDIAINF";
+            if (rds_data.ps == NULL)
+            {
+                rds_data.ps = "MEDIAINF";
+            }
         }
          else if(strcmp("-rdsh", arg)==0 && param != NULL) {
             i++;
@@ -625,13 +635,8 @@ int main(int argc, char **argv) {
             fatal("Unrecognised argument: %s.\n"
             "Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
             "                  [-ps ps_text] [-rt rt_text] [-ctl control_pipe]\n"
-            "                  [-rdsh history_file] [-pulse]\n", arg);
+            "                  [-rdsh history_file] [-pulse] [-dbus]\n", arg);
         }
-    }
-
-    if (control_pipe != NULL && dbus_mediainfo)
-    {
-        fatal("Error: Arguments -dbus and -ctl cannot be run together. Pick one!\n");
     }
     
     int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, rds_data.ps, rds_data.rt, ppm, control_pipe, dbus_mediainfo);

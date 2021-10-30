@@ -14,12 +14,21 @@ GDBusProxy *get_names_proxy;
 GDBusProxy *get_props_proxy;
 static GMainLoop *loop = NULL;
 char *metadata_text = NULL;
+int end_thread = 0;
 
 void *dbus_main(void *userdata)
 {
     metadata_text = (char*)userdata;
     
-    // TODO: Error handling needs work
+    // Block termination from this thread
+    sigset_t mask;
+	sigemptyset(&mask);
+    for (int i = 0; i < 64; i++)
+    {
+        sigaddset(&mask, i);
+    }
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+    
     if (create_dbus() != 0)
     {
         fprintf(stderr, "Error: Could not connect to DBus.\n");
@@ -32,6 +41,10 @@ void *dbus_main(void *userdata)
         {
             fprintf(stderr, "Error: Could not get metadata.\n");
             return NULL;
+        }
+        if (end_thread)
+        {
+            break;
         }
         sleep(3);
     }
@@ -86,6 +99,7 @@ int get_metadata()
                 // printf("%s is playing.\n", names[i]);
                 // Hook into this player
                 add_signal(names[i]);
+                break;
             }
         }
     }
@@ -271,5 +285,12 @@ void on_name_owner_notify (GObject *object, GParamSpec *pspec, gpointer user_dat
 {
     // printf("Exiting loop\n");
     snprintf(metadata_text, METADATA_TEXT_SIZE, "NO MEDIA");
+    g_main_loop_quit(loop);
+}
+
+void quit_dbus_thread()
+{
+    printf("Exiting loop\n");
+    end_thread = 1;
     g_main_loop_quit(loop);
 }
