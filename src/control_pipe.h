@@ -22,19 +22,22 @@
 */
 
 
-#define CONTROL_PIPE_PS_SET 1
-#define CONTROL_PIPE_RT_SET 2
-#define CONTROL_PIPE_TA_SET 3
+#define CONTROL_PIPE_PS_SET   1
+#define CONTROL_PIPE_RT_SET   2
+#define CONTROL_PIPE_TA_SET   3
+#define CONTROL_PIPE_AF_ADDED 4
 
 struct rds_data_s
 {
+    uint16_t pi;
     char *ps;
     char *rt;
+    uint8_t pty;
 };
 
 extern int open_control_pipe(char *filename);
 extern int close_control_pipe();
 extern int poll_control_pipe();
 
-void create_rds_history(char *filename, struct rds_data_s *rds_data);
-void write_rds_history(char *res);
+// void create_rds_history(char *filename, struct rds_data_s *rds_data);
+// void write_rds_history(char *res);

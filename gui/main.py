@@ -202,17 +202,21 @@ class Window:
         return rds_button
 
     def get_manual_rds_func(self, station_name, station_text, rds_button):
-        if self.autords_state:
-            self.disable_entry(station_name, "station_name")
-            self.disable_entry(station_text, "station_text")
-        else:
-            rds_history = self.rds.get_history()
-            station_name.connect("changed", self.rds.rds_entry_changing, "station_name", rds_history["station_name"])
-            station_text.connect("changed", self.rds.rds_entry_changing, "station_text", rds_history["station_text"])
-            rds_button.connect("clicked", self.rds.change, station_name, station_text)
+        rds_history = self.rds.get_history()
+        station_name.connect("changed", self.rds.rds_entry_changing, "station_name", rds_history["station_name"])
+        rds_button.connect("clicked", self.rds.change, station_name, station_text)
 
-            station_name.set_text(rds_history["station_name"])
-            station_text.set_text(rds_history["station_text"])
+        station_name.set_text(rds_history["station_name"])
+        station_text.set_text(rds_history["station_text"])
+        
+        if self.autords_state:
+            # self.disable_entry(station_name, "station_name")
+            self.disable_entry(station_text, "station_text")
+            station_text.set_text("<Auto>")
+        else:
+            station_text.connect("changed", self.rds.rds_entry_changing, "station_text", rds_history["station_text"])
+
+
 
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
@@ -267,9 +271,9 @@ class AutoRDS:
         with open("/usr/bin/pi_fm_runner", "r") as f:
             file_content = f.read()
             if state:
-                file_content = re.sub("-ctl rdspipe -rdsh rdshistory.txt", f"-dbus", file_content)
+                file_content += " -dbus"
             else:
-                file_content = re.sub("-dbus", f"-ctl rdspipe -rdsh rdshistory.txt", file_content)
+                file_content = re.sub(" -dbus", f"", file_content)
 
         with open("/usr/bin/pi_fm_runner", "w") as f:
             f.write(file_content)
@@ -295,7 +299,7 @@ class Transmission:
         else:
             return False
 
-    def change_frequency(self, freq_spin):
+    def change_frequency(self, button, freq_spin):
         file_content = None
         with open("/usr/bin/pi_fm_runner", "r") as f:
             file_content = f.read()
@@ -320,8 +324,8 @@ class Transmission:
 
 class RDS:
     def __init__(self):
-        self.history = self.get_history()
-
+        pass
+        
     def change(self, button, station_name, station_text):
         station_name_new = station_name.get_text()
         if station_name_new != "":
@@ -335,15 +339,18 @@ class RDS:
             self.rds_entry_changing(station_text, "station_text", station_text_new)
 
     def get_history(self):
-        with open("/tmp/rdshistory.txt", "r") as f:
-            content = f.readlines()
-            for line in content:
-                field_text = line[3:-1]
-                if "PS" in line:
-                    station_name = field_text
-                elif "RT" in line:
-                    station_text = field_text
-        return {"station_name": station_name, "station_text": station_text}
+        try:
+            with open("/tmp/rdshistory.txt", "r") as f:
+                content = f.readlines()
+                for line in content:
+                    field_text = line[3:-1]
+                    if "PS" in line:
+                        station_name = field_text
+                    elif "RT" in line:
+                        station_text = field_text
+            return {"station_name": station_name, "station_text": station_text}
+        except:
+            return None
 
     def rds_entry_changing(self, entry, entry_name, history_value):
         style_provider = Gtk.CssProvider()

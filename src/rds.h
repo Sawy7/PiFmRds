@@ -25,10 +25,14 @@
 #include <stdint.h>
 
 extern void get_rds_samples(float *buffer, int count);
+extern void bind_rds_history(char *filename);
+extern void write_rds_history();
 extern void set_rds_pi(uint16_t pi_code);
 extern void set_rds_rt(char *rt);
 extern void set_rds_ps(char *ps);
 extern void set_rds_ta(int ta);
-
+extern void set_rds_pty(uint8_t pty);
+extern void add_rds_af(uint8_t af);
+extern uint8_t mhz_to_binary(int freq);
 
 #endif /* RDS_H */

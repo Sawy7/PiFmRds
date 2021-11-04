@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "waveforms.h"
 
 #define RT_LENGTH 64
@@ -34,6 +36,7 @@ struct {
     int ta;
     char ps[PS_LENGTH];
     char rt[RT_LENGTH];
+    uint8_t pty;
 } rds_params = { 0 };
 /* Here, the first member of the struct must be a scalar to avoid a
    warning on -Wmissing-braces with GCC < 4.8.3 
@@ -54,8 +57,17 @@ struct {
 #define SAMPLE_BUFFER_SIZE (SAMPLES_PER_BIT + FILTER_SIZE)
 
 
+char *rdsh_filename = NULL; // RDS-history filename
+
 uint16_t offset_words[] = {0x0FC, 0x198, 0x168, 0x1B4};
 // We don't handle offset word C' here for the sake of simplicity
+
+// AF (alternative frequencies)
+uint8_t af_pool[25]; // AF method A (max of 25)
+int af_count = 0;
+
+// PTY
+uint16_t pty_mask = 0x1F << 5;
 
 /* Classical CRC computation */
 uint16_t crc(uint16_t block) {
@@ -121,6 +133,7 @@ void get_rds_group(int *buffer) {
     static int state = 0;
     static int ps_state = 0;
     static int rt_state = 0;
+    static int af_state = 0;
     uint16_t blocks[GROUP_LENGTH] = {rds_params.pi, 0, 0, 0};
     
     // Generate block content
@@ -128,11 +141,26 @@ void get_rds_group(int *buffer) {
         if(state < 4) {
             blocks[1] = 0x0400 | ps_state;
             if(rds_params.ta) blocks[1] |= 0x0010;
-            blocks[2] = 0xCDCD;     // no AF
+            if (af_count > 0)
+            {
+                if (af_state == 0) {
+                    blocks[2] = 0xE000 | (af_count << 8) | af_pool[0];
+                    af_state--;
+                } else if (af_state + 1 <= af_count - 1) {
+                    blocks[2] = (af_pool[af_state] << 8) | af_pool[af_state+1];
+                } else if (af_state == af_count - 1) {
+                    blocks[2] = (af_pool[af_state] << 8) | 0xCD;
+                }
+                af_state += 2;
+                if(af_state > af_count - 1) af_state = 0;
+                printf("0A block2: %04X\n", blocks[2]);
+            } else {
+                blocks[2] = 0xCDCD; // no AF
+            }
             blocks[3] = rds_params.ps[ps_state*2]<<8 | rds_params.ps[ps_state*2+1];
             ps_state++;
             if(ps_state >= 4) ps_state = 0;
-        } else { // state == 5
+        } else { // state == 4 (counting from 0)
             blocks[1] = 0x2400 | rt_state;
             blocks[2] = rds_params.rt[rt_state*4+0]<<8 | rds_params.rt[rt_state*4+1];
             blocks[3] = rds_params.rt[rt_state*4+2]<<8 | rds_params.rt[rt_state*4+3];
@@ -143,6 +171,8 @@ void get_rds_group(int *buffer) {
         state++;
         if(state >= 5) state = 0;
     }
+    blocks[1] |= rds_params.pty << 5; // Adding PTY
+    // printf("block1: %04X\n", blocks[1]);
     
     // Calculate the checkword for each block and emit the bits
     for(int i=0; i<GROUP_LENGTH; i++) {
@@ -232,6 +262,38 @@ void get_rds_samples(float *buffer, int count) {
     }
 }
 
+void bind_rds_history(char* filename) {
+    rdsh_filename = filename;
+}
+
+void write_rds_history() {
+    if (rdsh_filename == NULL)
+    {
+        return;
+    }
+
+    int historyfd = open(rdsh_filename, O_WRONLY | O_CREAT, 0644);
+
+    // Write PS
+    write(historyfd, "PS ", 3);
+    write(historyfd, rds_params.ps, PS_LENGTH);
+    write(historyfd, "\n", 1);
+
+    // Write RT
+    write(historyfd, "RT ", 3);
+    write(historyfd, rds_params.rt, RT_LENGTH);
+    write(historyfd, "\n", 1);
+
+    // Write TA
+    if(rds_params.ta) {
+        write(historyfd, "TA ON\n", 6);
+    } else {
+        write(historyfd, "TA OFF\n", 7);
+    }
+
+    close(historyfd);
+}
+
 void set_rds_pi(uint16_t pi_code) {
     rds_params.pi = pi_code;
 }
@@ -241,6 +303,7 @@ void set_rds_rt(char *rt) {
     for(int i=0; i<64; i++) {
         if(rds_params.rt[i] == 0) rds_params.rt[i] = 32;
     }
+    write_rds_history();
 }
 
 void set_rds_ps(char *ps) {
@@ -248,8 +311,35 @@ void set_rds_ps(char *ps) {
     for(int i=0; i<8; i++) {
         if(rds_params.ps[i] == 0) rds_params.ps[i] = 32;
     }
+    write_rds_history();
 }
 
 void set_rds_ta(int ta) {
     rds_params.ta = ta;
+}
+
+void set_rds_pty(uint8_t pty) {
+    rds_params.pty = pty;
+}
+
+void add_rds_af(uint8_t af) { // Binary number according to AF code table
+    if (af_count <= 24) {
+        af_pool[af_count] = af;
+        af_count++;
+        return;
+    } else if (af == 0) {
+        fprintf(stderr, "Error: Invalid AF.\n");
+    } else {
+        fprintf(stderr, "Error: Cannot add more AFs. Maximum is 25.\n");
+    }
+}
+
+uint8_t mhz_to_binary(int freq) {
+    uint8_t binary = (freq - 87500000) / 100000;
+    if (binary < 1 || binary > 204)
+    {
+        return 0; // This AF is invalid - will fail to add
+    }
+    // printf("BIN: %d\n", binary);
+    return binary;
 }

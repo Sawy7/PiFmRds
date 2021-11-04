@@ -39,7 +39,6 @@
 #define CTL_BUFFER_SIZE 100
 
 FILE *f_ctl;
-char *rdsh_filename = NULL;
 
 /*
  * Opens a file (pipe) to be used to control the RDS coder, in non-blocking mode.
@@ -76,12 +75,7 @@ int poll_control_pipe(int dbus_mediainfo) {
 
     char *res = fgets(buf, CTL_BUFFER_SIZE, f_ctl);
     if(res == NULL) return -1;
-    if(strlen(res) > 3 && res[2] == ' ') {
-        // save rds history to file (mainly for gui reference)
-        if (rdsh_filename != NULL)
-        {
-            write_rds_history(res);
-        }
+    if(strlen(res) > 3 && (res[2] == ' ' || res[3] == ' ')) {
         char *arg = res+3;
         if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
         if(res[0] == 'P' && res[1] == 'S') {
@@ -110,6 +104,19 @@ int poll_control_pipe(int dbus_mediainfo) {
             if(ta) printf("ON\n"); else printf("OFF\n");
             return CONTROL_PIPE_TA_SET;
         }
+        if(res[0] == 'P' && res[1] == 'T' && res[2] == 'Y') {
+            uint8_t pty = (uint8_t) (atoi(arg+1));
+            if (pty > 31) pty = 31;
+            set_rds_pty(pty);
+            printf("Set PTS to: %d\n", pty);
+            return CONTROL_PIPE_AF_ADDED;
+        }
+        if(res[0] == 'A' && res[1] == 'F') {
+            uint8_t af = mhz_to_binary((int)(1e6 * atof(arg)));
+            add_rds_af(af);
+            printf("Added AF: \"%s\"\n", arg);
+            return CONTROL_PIPE_AF_ADDED;
+        }        
     }
     
     return -1;
@@ -123,96 +130,100 @@ int close_control_pipe() {
     else return 0;
 }
 
-void create_rds_history(char *filename, struct rds_data_s *rds_data)
-{
-    rdsh_filename = filename;
-    FILE* rdshistory;
+// void create_rds_history(char *filename, struct rds_data_s *rds_data)
+// {
+//     rdsh_filename = filename;
+//     FILE* rdshistory;
 
-    printf("RDS history: %s\n", filename);
-    // if file already exists, reuse old params
-    if(access(filename, F_OK ) == 0)
-    {
-        rdshistory = fopen(filename, "r+");
-        char res[CTL_BUFFER_SIZE];
-        while (fgets(res, CTL_BUFFER_SIZE, rdshistory))
-        {
-            char *arg = res+3;
-            if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
-            if(res[0] == 'P' && res[1] == 'S')
-            {
-                if (strcmp("PS <Varying>", arg))
-                {
-                    continue;
-                }
-                arg[8] = 0;
-                rds_data->ps = (char *) malloc(9);
-                strcpy(rds_data->ps, arg);
-                set_rds_ps(arg);
-                printf("PS set to: \"%s\"\n", arg);
-            } else if(res[0] == 'R' && res[1] == 'T') {
-                arg[64] = 0;
-                rds_data->rt = (char *) malloc(65);
-                strcpy(rds_data->rt, arg);
-                set_rds_rt(arg);
-                printf("RT set to: \"%s\"\n", arg);
-            } else if(res[0] == 'T' && res[1] == 'A') {
-                int ta = ( strcmp(arg, "ON") == 0 );
-                set_rds_ta(ta);
-                printf("Set TA to ");
-                if(ta) printf("ON\n"); else printf("OFF\n");
-            }
-        }
-    } else
-    {
-        rdshistory = fopen(filename, "w");
-        if (rds_data->ps == NULL)
-        {
-            fputs("PS <Varying>", rdshistory);
-        }
-        else
-        {
-            fputs("PS ", rdshistory);
-            fputs(rds_data->ps, rdshistory);
-        }
-        fputs("\n", rdshistory);
+//     printf("RDS history: %s\n", filename);
+//     // if file already exists, reuse old params
+//     if(access(filename, F_OK ) == 0)
+//     {
+//         rdshistory = fopen(filename, "r+");
+//         char res[CTL_BUFFER_SIZE];
+//         while (fgets(res, CTL_BUFFER_SIZE, rdshistory))
+//         {
+//             char *arg = res+3;
+//             if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
+//             if(res[0] == 'P' && res[1] == 'S')
+//             {
+//                 if (strcmp("PS <Varying>", arg))
+//                 {
+//                     continue;
+//                 }
+//                 arg[8] = 0;
+//                 rds_data->ps = (char *) malloc(9);
+//                 strcpy(rds_data->ps, arg);
+//                 set_rds_ps(arg);
+//                 printf("PS set to: \"%s\"\n", arg);
+//             } else if(res[0] == 'R' && res[1] == 'T') {
+//                 arg[64] = 0;
+//                 rds_data->rt = (char *) malloc(65);
+//                 strcpy(rds_data->rt, arg);
+//                 set_rds_rt(arg);
+//                 printf("RT set to: \"%s\"\n", arg);
+//             } else if(res[0] == 'T' && res[1] == 'A') {
+//                 int ta = ( strcmp(arg, "ON") == 0 );
+//                 set_rds_ta(ta);
+//                 printf("Set TA to ");
+//                 if(ta) printf("ON\n"); else printf("OFF\n");
+//             }
+//         }
+//     } else
+//     {
+//         rdshistory = fopen(filename, "w");
+//         if (rds_data->ps == NULL)
+//         {
+//             fputs("PS <Varying>", rdshistory);
+//         }
+//         else
+//         {
+//             fputs("PS ", rdshistory);
+//             fputs(rds_data->ps, rdshistory);
+//         }
+//         fputs("\n", rdshistory);
 
-        fputs("RT ", rdshistory);
-        fputs(rds_data->rt, rdshistory);
-        fputs("\n", rdshistory);
+//         fputs("RT ", rdshistory);
+//         fputs(rds_data->rt, rdshistory);
+//         fputs("\n", rdshistory);
 
-        fputs("TA\n", rdshistory);
-        fclose(rdshistory);
-    }
-}
+//         fputs("TA\n", rdshistory);
+//         fclose(rdshistory);
+//     }
+// }
 
-void write_rds_history(char *res)
-{
-    FILE *rdshistory = fopen(rdsh_filename, "r");
-    char temp_path[strlen(rdsh_filename)+4];
-    strcpy(temp_path, rdsh_filename);
-    strcat(temp_path, ".tmp");
-    FILE *rdstemp = fopen(temp_path, "w");
-    char buf[CTL_BUFFER_SIZE];
-    while (1)
-    {
-        if (fgets(buf, CTL_BUFFER_SIZE, rdshistory) != NULL)
-        {
-            if (buf[0] == res[0] && buf[1] == res[1])
-            {
-                fputs(res, rdstemp);
-            }
-            else
-            {
-                fputs(buf, rdstemp);
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-    fclose(rdshistory);
-    fclose(rdstemp);
-    remove(rdsh_filename);
-    rename(temp_path, rdsh_filename);
-}
+// void write_rds_history(char *res)
+// {
+//     if (rdsh_filename == NULL)
+//     {
+//         return;
+//     }
+//     FILE *rdshistory = fopen(rdsh_filename, "r");
+//     char temp_path[strlen(rdsh_filename)+4];
+//     strcpy(temp_path, rdsh_filename);
+//     strcat(temp_path, ".tmp");
+//     FILE *rdstemp = fopen(temp_path, "w");
+//     char buf[CTL_BUFFER_SIZE];
+//     while (1)
+//     {
+//         if (fgets(buf, CTL_BUFFER_SIZE, rdshistory) != NULL)
+//         {
+//             if (buf[0] == res[0] && buf[1] == res[1])
+//             {
+//                 fputs(res, rdstemp);
+//             }
+//             else
+//             {
+//                 fputs(buf, rdstemp);
+//             }
+//         }
+//         else
+//         {
+//             break;
+//         }
+//     }
+//     fclose(rdshistory);
+//     fclose(rdstemp);
+//     remove(rdsh_filename);
+//     rename(temp_path, rdsh_filename);
+// }

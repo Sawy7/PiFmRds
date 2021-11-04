@@ -275,7 +275,6 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
 
     if (exit_loop)
     {
-        // printf("Exiting loop\n");
         snprintf(metadata_text, METADATA_TEXT_SIZE, "NO MEDIA");
         g_main_loop_quit(loop);
     }
@@ -283,14 +282,12 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
 
 void on_name_owner_notify (GObject *object, GParamSpec *pspec, gpointer user_data)
 {
-    // printf("Exiting loop\n");
     snprintf(metadata_text, METADATA_TEXT_SIZE, "NO MEDIA");
     g_main_loop_quit(loop);
 }
 
 void quit_dbus_thread()
 {
-    printf("Exiting loop\n");
     end_thread = 1;
     g_main_loop_quit(loop);
 }

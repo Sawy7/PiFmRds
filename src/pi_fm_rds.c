@@ -247,9 +247,7 @@ udelay(int us)
 static void
 terminate(int num)
 {
-    pid_t x = syscall(__NR_gettid);
     quit_dbus_thread();
-    printf("Termination is here %d\n", x);
     pthread_join(dbus_thread_id, NULL); // TODO: Only do this if -dbus
 
     // Stop outputting and generating the clock.
@@ -327,7 +325,7 @@ map_peripheral(uint32_t base, uint32_t len)
 #define DATA_SIZE 5000
 
 
-int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, char *ps, char *rt, float ppm, char *control_pipe, int dbus_mediainfo) {
+int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_s rds_data, float ppm, char *control_pipe, int dbus_mediainfo) {
     // Catch all signals possible - it is vital we kill the DMA engine
     // on process exit!
     for (int i = 0; i < 64; i++) {
@@ -470,21 +468,30 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     
     // Initialize the RDS modulator
     char myps[9] = {0};
-    set_rds_pi(pi);
-    set_rds_rt(rt);
+    set_rds_pi(rds_data.pi);
+    set_rds_rt(rds_data.rt);
+    set_rds_pty(rds_data.pty);
     uint16_t count = 0;
     uint16_t count2 = 0;
     int varying_ps = 0;
-    
-    if(ps) {
-        set_rds_ps(ps);
-        printf("PI: %04X, PS: \"%s\".\n", pi, ps);
+
+    // TODO: Delete later - Testing RDS AF
+    // for (size_t i = 0; i < 25; i++)
+    // {
+    //     add_rds_af(i+2);
+    // }
+    // mhz_to_binary((int)(1e6 * atof("87.7")));
+    // set_rds_pty(30);
+
+    if(rds_data.ps) {
+        set_rds_ps(rds_data.ps);
+        printf("PI: %04X, PS: \"%s\", PTY: %d.\n", rds_data.pi, rds_data.ps, rds_data.pty);
     } else {
-        printf("PI: %04X, PS: <Varying>.\n", pi);
+        printf("PI: %04X, PS: <Varying>, PTY: %d.\n", rds_data.pi, rds_data.pty);
         varying_ps = 1;
     }
-    printf("RT: \"%s\"\n", rt);
-    
+    printf("RT: \"%s\"\n", rds_data.rt);
+
     // Initialize the control pipe reader
     if(control_pipe) {
         if(open_control_pipe(control_pipe) == 0) {
@@ -499,7 +506,6 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, uint16_t pi, cha
     if(dbus_mediainfo)
     {
         strcpy(mediainfo_new, "NO MEDIA");
-        // TODO: Maybe end this thread gracefully somehow?
         pthread_create(&dbus_thread_id, NULL, dbus_main, (void*)mediainfo_new);
     }    
     
@@ -586,7 +592,8 @@ int main(int argc, char **argv) {
     struct rds_data_s rds_data;
     rds_data.ps = NULL;
     rds_data.rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
-    uint16_t pi = 0x1234;
+    rds_data.pi = 0x1234;
+    rds_data.pty = 0;
     float ppm = 0;
     
     // Parse command-line arguments
@@ -608,13 +615,17 @@ int main(int argc, char **argv) {
                 fatal("Incorrect frequency specification. Must be in megahertz, of the form 107.9, between 76 and 108.\n");
         } else if(strcmp("-pi", arg)==0 && param != NULL) {
             i++;
-            pi = (uint16_t) strtol(param, NULL, 16);
+            rds_data.pi = (uint16_t) strtol(param, NULL, 16);
         } else if(strcmp("-ps", arg)==0 && param != NULL) {
             i++;
             rds_data.ps = param;
         } else if(strcmp("-rt", arg)==0 && param != NULL) {
             i++;
             rds_data.rt = param;
+        } else if(strcmp("-pty", arg)==0 && param != NULL) {
+            i++;
+            rds_data.pty = (uint8_t) atoi(param);
+            if (rds_data.pty > 31) rds_data.pty = 31;
         } else if(strcmp("-ppm", arg)==0 && param != NULL) {
             i++;
             ppm = atof(param);
@@ -630,16 +641,16 @@ int main(int argc, char **argv) {
         }
          else if(strcmp("-rdsh", arg)==0 && param != NULL) {
             i++;
-            create_rds_history(param, &rds_data);
+            bind_rds_history(param);
         } else {
             fatal("Unrecognised argument: %s.\n"
             "Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
-            "                  [-ps ps_text] [-rt rt_text] [-ctl control_pipe]\n"
+            "                  [-ps ps_text] [-rt rt_text] [-pty pty] [-ctl control_pipe]\n"
             "                  [-rdsh history_file] [-pulse] [-dbus]\n", arg);
         }
     }
     
-    int errcode = tx(carrier_freq, audio_file, pulseaudio, pi, rds_data.ps, rds_data.rt, ppm, control_pipe, dbus_mediainfo);
+    int errcode = tx(carrier_freq, audio_file, pulseaudio, rds_data, ppm, control_pipe, dbus_mediainfo);
     
     terminate(errcode);
 }
