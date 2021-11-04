@@ -475,14 +475,6 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
     uint16_t count2 = 0;
     int varying_ps = 0;
 
-    // TODO: Delete later - Testing RDS AF
-    // for (size_t i = 0; i < 25; i++)
-    // {
-    //     add_rds_af(i+2);
-    // }
-    // mhz_to_binary((int)(1e6 * atof("87.7")));
-    // set_rds_pty(30);
-
     if(rds_data.ps) {
         set_rds_ps(rds_data.ps);
         printf("PI: %04X, PS: \"%s\", PTY: %d.\n", rds_data.pi, rds_data.ps, rds_data.pty);
@@ -528,6 +520,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
         
         if(control_pipe && poll_control_pipe(dbus_mediainfo) == CONTROL_PIPE_PS_SET) {
             varying_ps = 0;
+            disable_varying_ps();
         }
         
         usleep(5000);

@@ -58,6 +58,7 @@ struct {
 
 
 char *rdsh_filename = NULL; // RDS-history filename
+int varying_ps = 1;
 
 uint16_t offset_words[] = {0x0FC, 0x198, 0x168, 0x1B4};
 // We don't handle offset word C' here for the sake of simplicity
@@ -262,7 +263,7 @@ void get_rds_samples(float *buffer, int count) {
     }
 }
 
-void bind_rds_history(char* filename) {
+void bind_rds_history(char *filename) {
     rdsh_filename = filename;
 }
 
@@ -272,30 +273,44 @@ void write_rds_history() {
         return;
     }
 
-    int historyfd = open(rdsh_filename, O_WRONLY | O_CREAT, 0644);
+    int historyfd = open(rdsh_filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    char buf[10];
 
-    // Write PS
+    // PI
+    write(historyfd, "PI ", 3);
+    snprintf(buf, sizeof(buf), "0x%04X\n", rds_params.pi);
+    write(historyfd, buf, strlen(buf));
+
+    // PS
     write(historyfd, "PS ", 3);
     write(historyfd, rds_params.ps, PS_LENGTH);
     write(historyfd, "\n", 1);
 
-    // Write RT
+    if (varying_ps) write(historyfd, "PSVAR ON\n", 9);
+
+    // RT
     write(historyfd, "RT ", 3);
     write(historyfd, rds_params.rt, RT_LENGTH);
     write(historyfd, "\n", 1);
 
-    // Write TA
-    if(rds_params.ta) {
-        write(historyfd, "TA ON\n", 6);
-    } else {
-        write(historyfd, "TA OFF\n", 7);
-    }
+    // PTY
+    snprintf(buf, sizeof(buf), "PTY %d\n", rds_params.pty);
+    write(historyfd, buf, strlen(buf));
+
+    // TA
+    if (rds_params.ta) write(historyfd, "TA ON\n", 6);
 
     close(historyfd);
 }
 
+void disable_varying_ps() {
+    varying_ps = 0;
+    write_rds_history();
+}
+
 void set_rds_pi(uint16_t pi_code) {
     rds_params.pi = pi_code;
+    write_rds_history();
 }
 
 void set_rds_rt(char *rt) {
@@ -316,10 +331,12 @@ void set_rds_ps(char *ps) {
 
 void set_rds_ta(int ta) {
     rds_params.ta = ta;
+    write_rds_history();
 }
 
 void set_rds_pty(uint8_t pty) {
     rds_params.pty = pty;
+    write_rds_history();
 }
 
 void add_rds_af(uint8_t af) { // Binary number according to AF code table

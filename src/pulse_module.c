@@ -59,8 +59,6 @@ void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata)
     close(modulefd);
 
     pa_context_get_sink_info_list(c, list_sinks_cb, (void*)idx);
-
-    // pa_mainloop_quit(pa_ml, ret); //REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 }
 
 void list_sinks_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata)

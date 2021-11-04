@@ -27,6 +27,7 @@
 extern void get_rds_samples(float *buffer, int count);
 extern void bind_rds_history(char *filename);
 extern void write_rds_history();
+extern void disable_varying_ps();
 extern void set_rds_pi(uint16_t pi_code);
 extern void set_rds_rt(char *rt);
 extern void set_rds_ps(char *ps);

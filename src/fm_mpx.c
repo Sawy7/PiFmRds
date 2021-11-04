@@ -173,6 +173,7 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
     return 0;
 }
 
+int silence_counter = 0;
 
 // samples provided by this function are in 0..10: they need to be divided by
 // 10 after.
@@ -188,6 +189,18 @@ int fm_mpx_get_samples(float *mpx_buffer) {
             if(audio_len == 0) {
                 for(int j=0; j<2; j++) { // one retry
                     audio_len = sf_read_float(inf, audio_buffer, length);
+                    if (audio_len == 0) {
+                        if (silence_counter >= 100000) // TODO: Mayhaps there is a better solution? (definitely)
+                        {
+                            silence_counter = 0;
+                            printf("No audio is playing. Program stopped...\n");
+                            fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) & ~O_NONBLOCK);
+                        }
+                        silence_counter++;
+                    } else {
+                        fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) | O_NONBLOCK);
+                    }
+                    
                     if (audio_len < 0) {
                         fprintf(stderr, "Error reading audio\n");
                         return -1;
