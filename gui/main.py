@@ -20,7 +20,6 @@ class Window:
         self.setup_rds_object()
         self.setup_headerbar()
         self.setup_statusicon()
-        self.setup_history_modifications()
 
     def setup_window(self, width, height):
         self.win.set_default_size(width, height)
@@ -33,7 +32,7 @@ class Window:
         self.autords = AutoRDS(self)
 
     def setup_rds_object(self):
-        self.rds = RDS()
+        self.rds = RDS(self)
     
     def setup_headerbar(self):
         self.header_bar = Gtk.HeaderBar()
@@ -64,8 +63,14 @@ class Window:
     def setup_history_modifications(self):
         self.file_handler = FileEventHandler(self)
         self.file_observer = Observer()
+        
+    def start_history_modifications(self):
         self.file_observer.schedule(self.file_handler, path="/tmp/rdshistory.txt", recursive=False)
         self.file_observer.start()
+
+    def stop_history_modifications(self):
+        self.file_observer.stop()
+        self.file_observer.join()
 
     def create_layout(self):
         self.win_layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -89,9 +94,11 @@ class Window:
         self.autords_state = self.autords.get_state()
 
         if self.service_state == True:
-            # print("here")
             self.populate_left_win()
             self.populate_right_win()
+            # Setup watchdog for history file
+            self.setup_history_modifications()
+            self.start_history_modifications()
         else:
             fmstatus = "Dead"
             self.fmstatus_label.set_text(fmstatus)
@@ -158,11 +165,17 @@ class Window:
         freq_button.show()
 
     def populate_right_win(self):
+        # Setup station pi
+        self.station_pi = self.get_station_pi()
+
         # Setup station name
         self.station_name = self.get_station_name()
 
         # Setup station text
         self.station_text = self.get_station_text()
+
+        # Setup station PTY
+        self.station_pty = self.get_station_pty()
 
         # Setup RDS button
         self.rds_button = self.get_rds_button()
@@ -173,13 +186,27 @@ class Window:
         # Setup Auto-RDS switch
         self.get_auto_rds_switch()
 
+    def get_station_pi(self):
+        station_pi_label = Gtk.Label()
+        station_pi_label.set_text("Station PI")
+        station_pi = Gtk.Entry(name="station_pi")
+        
+        self.win_right.attach(station_pi_label, 0,0,1,1)
+        self.win_right.attach(station_pi, 1,0,1,1)
+        station_pi_label.show()
+        station_pi.show()
+
+        return station_pi
+
     def get_station_name(self):
         station_name_label = Gtk.Label()
         station_name_label.set_text("Station name")
         station_name = Gtk.Entry(name="station_name")
         
-        self.win_right.attach(station_name_label, 0,0,1,1)
-        self.win_right.attach(station_name, 1,0,1,1)
+        station_name_label.set_margin_top(5)
+        self.win_right.attach(station_name_label, 0,1,1,1)
+        station_name.set_margin_top(5)
+        self.win_right.attach(station_name, 1,1,1,1)
         station_name_label.show()
         station_name.show()
 
@@ -191,19 +218,70 @@ class Window:
         station_text = Gtk.Entry(name="station_text")
             
         station_text_label.set_margin_top(5)
-        
-        self.win_right.attach(station_text_label, 0,1,1,1)
+        self.win_right.attach(station_text_label, 0,2,1,1)
         station_text.set_margin_top(5)
-        self.win_right.attach(station_text, 1,1,1,1)
+        self.win_right.attach(station_text, 1,2,1,1)
         station_text_label.show()
         station_text.show()
 
         return station_text
 
+    def get_station_pty(self):
+        station_pty_label = Gtk.Label()
+        station_pty_label.set_text("Program Type")
+        station_pty = Gtk.ComboBoxText(name="station_pty")
+        # station_pty.set_name("station_pty")
+
+        self.fill_station_pty(station_pty)
+        station_pty.set_active(0)
+            
+        station_pty_label.set_margin_top(5)
+        self.win_right.attach(station_pty_label, 0,3,1,1)
+        station_pty.set_margin_top(5)
+        self.win_right.attach(station_pty, 1,3,1,1)
+        station_pty_label.show()
+        station_pty.show()
+
+        return station_pty
+
+    def fill_station_pty(self, station_pty):
+        station_pty.insert(0, "0", "Nothing")
+        station_pty.insert(1, "1", "News")
+        station_pty.insert(2, "2", "Current affairs")
+        station_pty.insert(3, "3", "Information")
+        station_pty.insert(4, "4", "Sport")
+        station_pty.insert(5, "5", "Education")
+        station_pty.insert(6, "6", "Drama")
+        station_pty.insert(7, "7", "Culture")
+        station_pty.insert(8, "8", "Science")
+        station_pty.insert(9, "9", "Varied")
+        station_pty.insert(10, "10", "Popular Music (Pop)")
+        station_pty.insert(11, "11", "Rock Music")
+        station_pty.insert(12, "12", "Easy Listening")
+        station_pty.insert(13, "13", "Light Classical")
+        station_pty.insert(14, "14", "Serious Classical")
+        station_pty.insert(15, "15", "Other Music")
+        station_pty.insert(16, "16", "Weather")
+        station_pty.insert(17, "17", "Finance")
+        station_pty.insert(18, "18", "Children's Programmes")
+        station_pty.insert(19, "19", "Social Affairs")
+        station_pty.insert(20, "20", "Religion")
+        station_pty.insert(21, "21", "Phone-in")
+        station_pty.insert(22, "22", "Travel")
+        station_pty.insert(23, "23", "Leisure")
+        station_pty.insert(24, "24", "Jazz Music")
+        station_pty.insert(25, "25", "Country Music")
+        station_pty.insert(26, "26", "National Music")
+        station_pty.insert(27, "27", "Oldies Music")
+        station_pty.insert(28, "28", "Folk Music")
+        station_pty.insert(29, "29", "Documentary")
+        station_pty.insert(30, "30", "Alarm Test")
+        station_pty.insert(31, "31", "Alarm")
+
     def get_rds_button(self):
         rds_button = Gtk.Button(label="Change RDS")
         rds_button.set_margin_top(20)
-        self.win_right.attach(rds_button, 0,2,2,1)
+        self.win_right.attach(rds_button, 0,4,2,1)
         rds_button.show()
         rds_button.grab_focus()
 
@@ -211,11 +289,15 @@ class Window:
 
     def get_manual_rds_func(self):
         rds_history = self.rds.get_history()
+        self.station_pi.connect("changed", self.rds.rds_entry_changing, "station_pi")
         self.station_name.connect("changed", self.rds.rds_entry_changing, "station_name")
-        self.rds_button.connect("clicked", self.rds.change, self.station_name, self.station_text)
+        self.station_pty.connect("changed", self.rds.rds_entry_changing, "station_pty")
+        self.rds_button.connect("clicked", self.rds.change)
 
+        self.station_pi.set_text(rds_history["station_pi"])
         self.station_name.set_text(rds_history["station_name"])
         self.station_text.set_text(rds_history["station_text"])
+        self.station_pty.set_active(int(rds_history["station_pty"]))
         
         if self.autords_state:
             # self.disable_entry(station_name, "station_name")
@@ -228,22 +310,26 @@ class Window:
         rds_history = self.rds.get_history()
         
         self.station_name.set_text(rds_history["station_name"])
+        self.rds.rds_entry_changing(self.station_pi, "station_pi")
+        self.rds.rds_entry_changing(self.station_name, "station_name")
+        self.rds.rds_entry_changing(self.station_pty, "station_pty")
         
         if not self.autords_state:
             self.station_text.set_text(rds_history["station_text"])
+            self.rds.rds_entry_changing(self.station_text, "station_text")
 
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
         rds_metadata_label.set_text("Auto-RDS")
         rds_metadata_label.set_margin_top(20)
-        self.win_right.attach(rds_metadata_label, 0,3,1,1)
+        self.win_right.attach(rds_metadata_label, 0,5,1,1)
         rds_metadata_label.show()
 
         rds_metadata = Gtk.Switch()
         rds_metadata.set_state(self.autords_state)
         rds_metadata.connect("state-set", self.autords.toggle)
         rds_metadata.set_margin_top(20)
-        self.win_right.attach(rds_metadata, 1,3,1,1)
+        self.win_right.attach(rds_metadata, 1,5,1,1)
         rds_metadata.show()
 
     def disable_entry(self, entry, entry_name):
@@ -258,6 +344,7 @@ class Window:
         )
 
     def reset(self):
+        self.stop_history_modifications()
         for side in self.win_layout.get_children():
             if type(side) == Gtk.Separator:
                 continue
@@ -337,47 +424,79 @@ class Transmission:
         )
 
 class RDS:
-    def __init__(self):
+    def __init__(self, window):
         self.charlimits = {"station_name": 8, "station_text": 64}
+        self.window = window
         
-    def change(self, button, station_name, station_text):
-        station_name_new = station_name.get_text()
+    def change(self, button):
+        station_pi_new = self.window.station_pi.get_text()
+        station_name_new = self.window.station_name.get_text()
+        station_text_new = self.window.station_text.get_text()
+        station_pty_new = self.window.station_pty.get_active()
+        
+        event_counter = 0
+
+        if station_pi_new != "":
+            event_counter += 1
         if station_name_new != "":
-            os.system(f"echo 'PS {station_name_new}' > /tmp/rdspipe")
-            self.rds_entry_changing(station_name, "station_name")
-            # self.rds_history["station_name"] = station_name_new
-        station_text_new = station_text.get_text()
+            event_counter += 1
         if station_text_new != "" and station_text_new != "<Auto>":
-            os.system(f"echo 'RT {station_text_new}' > /tmp/rdspipe")
-            self.rds_entry_changing(station_text, "station_text")
-            # self.rds_history["station_text"] = station_text_new
+            event_counter += 1
+        if station_pty_new != "":
+            event_counter += 1
+        self.window.file_handler.ignore_events(event_counter-1)
+            
+        if station_pi_new != "":
+            os.system(f'echo "PI {station_pi_new}" > /tmp/rdspipe')
+        if station_name_new != "":
+            os.system(f'echo "PS {station_name_new}" > /tmp/rdspipe')
+            # station_name.set_text(station_name_new)
+        if station_text_new != "" and station_text_new != "<Auto>":
+            os.system(f'echo "RT {station_text_new}" > /tmp/rdspipe')
+            # station_text.set_text(station_text_new)
+        if station_pty_new != "":
+            os.system(f'echo "PTY {station_pty_new}" > /tmp/rdspipe')
 
     def get_history(self):
         try:
+            station_pi = ""
             station_name = ""
             station_text = ""
+            station_pty = ""
             with open("/tmp/rdshistory.txt", "r") as f:
                 content = f.readlines()
                 for line in content:
                     field_text = line[3:-1].rstrip()
-                    if "PS " in line:
+                    if "PI " in line:
+                        station_pi = field_text
+                    elif "PS " in line:
                         station_name = field_text
                     elif "RT " in line:
                         station_text = field_text
-            self.history = {"station_name": station_name, "station_text": station_text}
-            # print(self.history)
+                    elif "PTY " in line:
+                        field_text = field_text[1:]
+                        station_pty = field_text
+            self.history = {"station_pi": station_pi, "station_name": station_name, "station_text": station_text, "station_pty": station_pty}
+            print(self.history)
             return self.history
         except:
             return None
 
     def rds_entry_changing(self, entry, entry_name):
         # Character limit
-        charlimit = self.charlimits[entry_name]
-        entry.set_text(entry.get_text()[:charlimit])
+        try:
+            charlimit = self.charlimits[entry_name]
+            entry.set_text(entry.get_text()[:charlimit])
+        except KeyError:
+            pass # no charlimit
         # Colors
         style_provider = Gtk.CssProvider()
-        bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
-        css = "#" + entry_name + "{ background:" +  bg_color + "; }"
+        if isinstance(entry, Gtk.Entry):
+            bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
+            css = "#" + entry_name + " { background: " +  bg_color + "; }"
+        else:
+            bg_color = "#33D17A" if entry.get_active() == int(self.history[entry_name]) else "#F57900"
+            css = "#" + entry_name + " button{ background: " +  bg_color + "; }"
         style_provider.load_from_data(bytes(css.encode()))
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), style_provider,
@@ -387,11 +506,19 @@ class RDS:
 class FileEventHandler(FileSystemEventHandler):
     def __init__(self, window):
         self.window = window
+        self.ignore = 0   
+
     # def on_any_event(self, event):
     #     print(event)
+    
     def on_closed(self, event):
-        print(event)
-        # self.window.repopulate_rds_entries()
+        if self.ignore == 0:
+            self.window.repopulate_rds_entries()
+        else:
+            self.ignore -= 1
+
+    def ignore_events(self, value):
+        self.ignore = value
 
 if __name__ == "__main__":
     mainWin = Window(500, 400)
