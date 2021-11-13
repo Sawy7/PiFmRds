@@ -21,11 +21,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef CTL_H
+#define CTL_H
 
-#define CONTROL_PIPE_PS_SET   1
-#define CONTROL_PIPE_RT_SET   2
-#define CONTROL_PIPE_TA_SET   3
-#define CONTROL_PIPE_AF_ADDED 4
+#define CONTROL_PIPE_PS_SET     1
+#define CONTROL_PIPE_RT_SET     2
+#define CONTROL_PIPE_TA_SET     3
+#define CONTROL_PIPE_AF_ADDED   4
+#define CONTROL_PIPE_AF_CLEARED 5
+#define CONTROL_PIPE_PI_CHANGED 6
 
 struct rds_data_s
 {
@@ -41,3 +45,5 @@ extern int poll_control_pipe();
 
 // void create_rds_history(char *filename, struct rds_data_s *rds_data);
 // void write_rds_history(char *res);
+
+#endif /* CTL_H */

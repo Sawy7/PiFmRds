@@ -21,7 +21,6 @@
 #ifndef RDS_H
 #define RDS_H
 
-
 #include <stdint.h>
 
 extern void get_rds_samples(float *buffer, int count);
@@ -34,6 +33,8 @@ extern void set_rds_ps(char *ps);
 extern void set_rds_ta(int ta);
 extern void set_rds_pty(uint8_t pty);
 extern void add_rds_af(uint8_t af);
+extern void clear_rds_af();
 extern uint8_t mhz_to_binary(int freq);
+extern int reuse_rds_history(int dbus_mediainfo);
 
 #endif /* RDS_H */

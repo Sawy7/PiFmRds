@@ -84,7 +84,7 @@ int poll_control_pipe(int dbus_mediainfo) {
             printf("PS set to: \"%s\"\n", arg);
             return CONTROL_PIPE_PS_SET;
         }
-        if(res[0] == 'R' && res[1] == 'T') {
+        else if(res[0] == 'R' && res[1] == 'T') {
             if (dbus_mediainfo)
             {
                 printf("RT was not set. Pulling from metadata.\n");
@@ -97,26 +97,38 @@ int poll_control_pipe(int dbus_mediainfo) {
             }
             return CONTROL_PIPE_RT_SET;
         }
-        if(res[0] == 'T' && res[1] == 'A') {
+        else if(res[0] == 'T' && res[1] == 'A') {
             int ta = ( strcmp(arg, "ON") == 0 );
             set_rds_ta(ta);
             printf("Set TA to ");
             if(ta) printf("ON\n"); else printf("OFF\n");
             return CONTROL_PIPE_TA_SET;
         }
-        if(res[0] == 'P' && res[1] == 'T' && res[2] == 'Y') {
+        else if(res[0] == 'P' && res[1] == 'T' && res[2] == 'Y') {
             uint8_t pty = (uint8_t) (atoi(arg+1));
             if (pty > 31) pty = 31;
             set_rds_pty(pty);
             printf("Set PTS to: %d\n", pty);
             return CONTROL_PIPE_AF_ADDED;
         }
-        if(res[0] == 'A' && res[1] == 'F') {
+        else if(res[0] == 'A' && res[1] == 'F') {
+            if (strcmp(arg, "CLEAR") == 0)
+            {
+                clear_rds_af();
+                printf("Cleared all AFs\n");
+                return CONTROL_PIPE_AF_CLEARED;
+            }
             uint8_t af = mhz_to_binary((int)(1e6 * atof(arg)));
             add_rds_af(af);
             printf("Added AF: \"%s\"\n", arg);
             return CONTROL_PIPE_AF_ADDED;
-        }        
+        }
+        else if(res[0] == 'P' && res[1] == 'I') {
+            uint16_t pi = (uint16_t) strtol(arg, NULL, 16);
+            set_rds_pi(pi);
+            printf("Set PI to: 0x%s\n", arg);
+            return CONTROL_PIPE_PI_CHANGED;
+        }
     }
     
     return -1;

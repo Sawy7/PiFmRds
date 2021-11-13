@@ -30,6 +30,9 @@
 #define RT_LENGTH 64
 #define PS_LENGTH 8
 #define GROUP_LENGTH 4
+#define HIST_NOT_REUSED 0
+#define HIST_REUSED     1
+#define HIST_VARYING    2
 
 struct {
     uint16_t pi;
@@ -154,7 +157,7 @@ void get_rds_group(int *buffer) {
                 }
                 af_state += 2;
                 if(af_state > af_count - 1) af_state = 0;
-                printf("0A block2: %04X\n", blocks[2]);
+                // printf("0A block2: %04X\n", blocks[2]);
             } else {
                 blocks[2] = 0xCDCD; // no AF
             }
@@ -281,12 +284,12 @@ void write_rds_history() {
     snprintf(buf, sizeof(buf), "0x%04X\n", rds_params.pi);
     write(historyfd, buf, strlen(buf));
 
+    if (varying_ps) write(historyfd, "PSVAR ON\n", 9);
+
     // PS
     write(historyfd, "PS ", 3);
     write(historyfd, rds_params.ps, PS_LENGTH);
     write(historyfd, "\n", 1);
-
-    if (varying_ps) write(historyfd, "PSVAR ON\n", 9);
 
     // RT
     write(historyfd, "RT ", 3);
@@ -351,6 +354,10 @@ void add_rds_af(uint8_t af) { // Binary number according to AF code table
     }
 }
 
+void clear_rds_af() {
+    af_count = 0;
+}
+
 uint8_t mhz_to_binary(int freq) {
     uint8_t binary = (freq - 87500000) / 100000;
     if (binary < 1 || binary > 204)
@@ -359,4 +366,50 @@ uint8_t mhz_to_binary(int freq) {
     }
     // printf("BIN: %d\n", binary);
     return binary;
+}
+
+int reuse_rds_history(int dbus_mediainfo) {
+    if (rdsh_filename == NULL || access(rdsh_filename, F_OK ) != 0)
+    {
+        return HIST_NOT_REUSED;
+    }
+
+    int return_value = HIST_REUSED;
+    FILE *rdshistory = fopen (rdsh_filename, "r");
+    char res[100];
+    
+    while (fgets(res, 100, rdshistory))
+    {
+        char *arg = res+3;
+        if(arg[strlen(arg)-1] == '\n') arg[strlen(arg)-1] = 0;
+        if(res[0] == 'P' && res[1] == 'S' && res[2] == 'V') {
+            return_value = HIST_VARYING;
+        }
+        else if(res[0] == 'P' && res[1] == 'S' && return_value != HIST_VARYING) {
+            arg[8] = 0;
+            varying_ps = 0;
+            set_rds_ps(arg);
+        }
+        else if(res[0] == 'R' && res[1] == 'T') {
+            if (!dbus_mediainfo)
+            {
+                arg[64] = 0;
+                set_rds_rt(arg);
+            }
+        }
+        else if(res[0] == 'T' && res[1] == 'A') {
+            int ta = ( strcmp(arg, "ON") == 0 );
+            set_rds_ta(ta);
+        }
+        else if(res[0] == 'P' && res[1] == 'T' && res[2] == 'Y') {
+            uint8_t pty = (uint8_t) (atoi(arg+1));
+            if (pty > 31) pty = 31;
+            set_rds_pty(pty);
+        }
+        else if(res[0] == 'P' && res[1] == 'I') {
+            uint16_t pi = (uint16_t) strtol(arg, NULL, 16);
+            set_rds_pi(pi);
+        }
+    }
+    return return_value;
 }

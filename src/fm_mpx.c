@@ -190,7 +190,7 @@ int fm_mpx_get_samples(float *mpx_buffer) {
                 for(int j=0; j<2; j++) { // one retry
                     audio_len = sf_read_float(inf, audio_buffer, length);
                     if (audio_len == 0) {
-                        if (silence_counter >= 100000) // TODO: Mayhaps there is a better solution? (definitely)
+                        if (silence_counter >= 100000) // TODO: Think about this some more
                         {
                             silence_counter = 0;
                             printf("No audio is playing. Program stopped...\n");

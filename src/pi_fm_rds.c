@@ -465,24 +465,31 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
 
     // Initialize the baseband generator
     if(fm_mpx_open(audio_file, pulseaudio, DATA_SIZE) < 0) return 1;
+
+    // Look at previous RDS history
+    int history_reused = reuse_rds_history(dbus_mediainfo);
     
     // Initialize the RDS modulator
     char myps[9] = {0};
-    set_rds_pi(rds_data.pi);
-    set_rds_rt(rds_data.rt);
-    set_rds_pty(rds_data.pty);
+    if(history_reused == 0) {
+        set_rds_pi(rds_data.pi);
+        set_rds_rt(rds_data.rt);
+        set_rds_pty(rds_data.pty);
+    }
     uint16_t count = 0;
     uint16_t count2 = 0;
     int varying_ps = 0;
 
-    if(rds_data.ps) {
-        set_rds_ps(rds_data.ps);
-        printf("PI: %04X, PS: \"%s\", PTY: %d.\n", rds_data.pi, rds_data.ps, rds_data.pty);
-    } else {
-        printf("PI: %04X, PS: <Varying>, PTY: %d.\n", rds_data.pi, rds_data.pty);
-        varying_ps = 1;
-    }
-    printf("RT: \"%s\"\n", rds_data.rt);
+    if(!history_reused) {
+        if(rds_data.ps) {
+            set_rds_ps(rds_data.ps);
+        } else {
+            rds_data.ps = "<Varying>";
+            varying_ps = 1;
+        }
+        printf("PI: %04X, PS: \"%s\", PTY: %d.\nRT: \"%s\"\n", rds_data.pi, rds_data.ps, rds_data.pty, rds_data.rt);
+    } else
+        printf("RDS parameters set from history.\n");
 
     // Initialize the control pipe reader
     if(control_pipe) {
@@ -518,7 +525,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
             count++;
         }
         
-        if(control_pipe && poll_control_pipe(dbus_mediainfo) == CONTROL_PIPE_PS_SET) {
+        if(control_pipe && poll_control_pipe(dbus_mediainfo) == CONTROL_PIPE_PS_SET && varying_ps == 1) {
             varying_ps = 0;
             disable_varying_ps();
         }

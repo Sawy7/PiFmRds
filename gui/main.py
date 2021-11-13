@@ -1,10 +1,12 @@
 #!python
 #cython: language_level=3
 
-import gi, os, subprocess, re
+import gi, os, subprocess, re, time
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 # TODO: Make app fetch data periodically
 
@@ -18,6 +20,7 @@ class Window:
         self.setup_rds_object()
         self.setup_headerbar()
         self.setup_statusicon()
+        self.setup_history_modifications()
 
     def setup_window(self, width, height):
         self.win.set_default_size(width, height)
@@ -57,6 +60,12 @@ class Window:
         else:
             self.win.hide()
         self.window_hidden = not self.window_hidden
+
+    def setup_history_modifications(self):
+        self.file_handler = FileEventHandler(self)
+        self.file_observer = Observer()
+        self.file_observer.schedule(self.file_handler, path="/tmp/rdshistory.txt", recursive=False)
+        self.file_observer.start()
 
     def create_layout(self):
         self.win_layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -149,18 +158,17 @@ class Window:
         freq_button.show()
 
     def populate_right_win(self):
-        # TODO: Limit characters of these two
         # Setup station name
-        station_name = self.get_station_name()
+        self.station_name = self.get_station_name()
 
         # Setup station text
-        station_text = self.get_station_text()
+        self.station_text = self.get_station_text()
 
         # Setup RDS button
-        rds_button = self.get_rds_button()
+        self.rds_button = self.get_rds_button()
 
         # Lock/unlock manual RDS
-        self.get_manual_rds_func(station_name, station_text, rds_button)
+        self.get_manual_rds_func()
 
         # Setup Auto-RDS switch
         self.get_auto_rds_switch()
@@ -201,22 +209,28 @@ class Window:
 
         return rds_button
 
-    def get_manual_rds_func(self, station_name, station_text, rds_button):
+    def get_manual_rds_func(self):
         rds_history = self.rds.get_history()
-        station_name.connect("changed", self.rds.rds_entry_changing, "station_name", rds_history["station_name"])
-        rds_button.connect("clicked", self.rds.change, station_name, station_text)
+        self.station_name.connect("changed", self.rds.rds_entry_changing, "station_name")
+        self.rds_button.connect("clicked", self.rds.change, self.station_name, self.station_text)
 
-        station_name.set_text(rds_history["station_name"])
-        station_text.set_text(rds_history["station_text"])
+        self.station_name.set_text(rds_history["station_name"])
+        self.station_text.set_text(rds_history["station_text"])
         
         if self.autords_state:
             # self.disable_entry(station_name, "station_name")
-            self.disable_entry(station_text, "station_text")
-            station_text.set_text("<Auto>")
+            self.disable_entry(self.station_text, "station_text")
+            self.station_text.set_text("<Auto>")
         else:
-            station_text.connect("changed", self.rds.rds_entry_changing, "station_text", rds_history["station_text"])
+            self.station_text.connect("changed", self.rds.rds_entry_changing, "station_text")
 
-
+    def repopulate_rds_entries(self):
+        rds_history = self.rds.get_history()
+        
+        self.station_name.set_text(rds_history["station_name"])
+        
+        if not self.autords_state:
+            self.station_text.set_text(rds_history["station_text"])
 
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
@@ -324,43 +338,60 @@ class Transmission:
 
 class RDS:
     def __init__(self):
-        pass
+        self.charlimits = {"station_name": 8, "station_text": 64}
         
     def change(self, button, station_name, station_text):
         station_name_new = station_name.get_text()
         if station_name_new != "":
             os.system(f"echo 'PS {station_name_new}' > /tmp/rdspipe")
-            self.rds_history["station_name"] = station_name_new
-            self.rds_entry_changing(station_name, "station_name", station_name_new)
+            self.rds_entry_changing(station_name, "station_name")
+            # self.rds_history["station_name"] = station_name_new
         station_text_new = station_text.get_text()
-        if station_text_new != "":
+        if station_text_new != "" and station_text_new != "<Auto>":
             os.system(f"echo 'RT {station_text_new}' > /tmp/rdspipe")
-            self.rds_history["station_text"] = station_text_new
-            self.rds_entry_changing(station_text, "station_text", station_text_new)
+            self.rds_entry_changing(station_text, "station_text")
+            # self.rds_history["station_text"] = station_text_new
 
     def get_history(self):
         try:
+            station_name = ""
+            station_text = ""
             with open("/tmp/rdshistory.txt", "r") as f:
                 content = f.readlines()
                 for line in content:
-                    field_text = line[3:-1]
-                    if "PS" in line:
+                    field_text = line[3:-1].rstrip()
+                    if "PS " in line:
                         station_name = field_text
-                    elif "RT" in line:
+                    elif "RT " in line:
                         station_text = field_text
-            return {"station_name": station_name, "station_text": station_text}
+            self.history = {"station_name": station_name, "station_text": station_text}
+            # print(self.history)
+            return self.history
         except:
             return None
 
-    def rds_entry_changing(self, entry, entry_name, history_value):
+    def rds_entry_changing(self, entry, entry_name):
+        # Character limit
+        charlimit = self.charlimits[entry_name]
+        entry.set_text(entry.get_text()[:charlimit])
+        # Colors
         style_provider = Gtk.CssProvider()
-        bg_color = "#33D17A" if entry.get_text() == history_value else "#F57900"
+        bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
         css = "#" + entry_name + "{ background:" +  bg_color + "; }"
         style_provider.load_from_data(bytes(css.encode()))
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), style_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
+
+class FileEventHandler(FileSystemEventHandler):
+    def __init__(self, window):
+        self.window = window
+    # def on_any_event(self, event):
+    #     print(event)
+    def on_closed(self, event):
+        print(event)
+        # self.window.repopulate_rds_entries()
 
 if __name__ == "__main__":
     mainWin = Window(500, 400)
