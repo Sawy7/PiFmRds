@@ -374,6 +374,7 @@ void add_rds_af(uint8_t af) { // Binary number according to AF code table
 
 void clear_rds_af() {
     af_count = 0;
+    write_rds_history();
 }
 
 uint8_t mhz_to_binary(int freq) {

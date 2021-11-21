@@ -4,7 +4,7 @@
 import gi, os, subprocess, re, time
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, Gio, GObject
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -24,6 +24,7 @@ class Window:
     def setup_window(self, width, height):
         self.win.set_default_size(width, height)
         self.win.set_resizable(False)
+        self.af_dialog_exists = False
 
     def setup_transmisson_object(self):
         self.transmission = Transmission(self)
@@ -69,8 +70,9 @@ class Window:
         self.file_observer.start()
 
     def stop_history_modifications(self):
-        self.file_observer.stop()
-        self.file_observer.join()
+        if hasattr(self, "file_observer"):
+            self.file_observer.stop()
+            self.file_observer.join()
 
     def create_layout(self):
         self.win_layout = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -180,6 +182,9 @@ class Window:
         # Setup RDS button
         self.rds_button = self.get_rds_button()
 
+        # Setup AF button
+        self.af_button = self.get_af_button()
+
         # Lock/unlock manual RDS
         self.get_manual_rds_func()
 
@@ -287,17 +292,31 @@ class Window:
 
         return rds_button
 
+    def get_af_button(self):
+        af_button = Gtk.Button(label="Manage AFs")
+        af_button.set_margin_top(20)
+        self.win_right.attach(af_button, 0,5,2,1)
+        af_button.show()
+        af_button.grab_focus()
+        af_button.connect("clicked", self.show_af_dialog)
+
+        return af_button
+
+    def show_af_dialog(self, button):
+        self.af_dialog = AFDialog(self)
+        self.af_dialog_exists = True
+
     def get_manual_rds_func(self):
-        rds_history = self.rds.get_history()
+        self.previous_rds_history = self.rds.get_history()
         self.station_pi.connect("changed", self.rds.rds_entry_changing, "station_pi")
         self.station_name.connect("changed", self.rds.rds_entry_changing, "station_name")
         self.station_pty.connect("changed", self.rds.rds_entry_changing, "station_pty")
         self.rds_button.connect("clicked", self.rds.change)
 
-        self.station_pi.set_text(rds_history["station_pi"])
-        self.station_name.set_text(rds_history["station_name"])
-        self.station_text.set_text(rds_history["station_text"])
-        self.station_pty.set_active(int(rds_history["station_pty"]))
+        self.station_pi.set_text(self.previous_rds_history["station_pi"])
+        self.station_name.set_text(self.previous_rds_history["station_name"])
+        self.station_text.set_text(self.previous_rds_history["station_text"])
+        self.station_pty.set_active(int(self.previous_rds_history["station_pty"]))
         
         if self.autords_state:
             # self.disable_entry(station_name, "station_name")
@@ -308,6 +327,8 @@ class Window:
 
     def repopulate_rds_entries(self):
         rds_history = self.rds.get_history()
+        if rds_history == self.previous_rds_history:
+            return
         
         self.station_name.set_text(rds_history["station_name"])
         self.rds.rds_entry_changing(self.station_pi, "station_pi")
@@ -318,18 +339,23 @@ class Window:
             self.station_text.set_text(rds_history["station_text"])
             self.rds.rds_entry_changing(self.station_text, "station_text")
 
+        if self.af_dialog_exists:
+            self.af_dialog.update_afbox(rds_history)
+
+        self.previous_rds_history = rds_history
+
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
         rds_metadata_label.set_text("Auto-RDS")
         rds_metadata_label.set_margin_top(20)
-        self.win_right.attach(rds_metadata_label, 0,5,1,1)
+        self.win_right.attach(rds_metadata_label, 0,6,1,1)
         rds_metadata_label.show()
 
         rds_metadata = Gtk.Switch()
         rds_metadata.set_state(self.autords_state)
         rds_metadata.connect("state-set", self.autords.toggle)
         rds_metadata.set_margin_top(20)
-        self.win_right.attach(rds_metadata, 1,5,1,1)
+        self.win_right.attach(rds_metadata, 1,6,1,1)
         rds_metadata.show()
 
     def disable_entry(self, entry, entry_name):
@@ -463,6 +489,8 @@ class RDS:
             station_name = ""
             station_text = ""
             station_pty = ""
+            station_af = []
+            psvar = False
             with open("/tmp/rdshistory.txt", "r") as f:
                 content = f.readlines()
                 for line in content:
@@ -470,13 +498,20 @@ class RDS:
                     if "PI " in line:
                         station_pi = field_text
                     elif "PS " in line:
-                        station_name = field_text
+                        if not psvar:
+                            station_name = field_text
+                    elif "PSVAR" in line:
+                        station_name = "<var>"
+                        psvar = True
                     elif "RT " in line:
                         station_text = field_text
                     elif "PTY " in line:
                         field_text = field_text[1:]
                         station_pty = field_text
-            self.history = {"station_pi": station_pi, "station_name": station_name, "station_text": station_text, "station_pty": station_pty}
+                    elif "AF " in line:
+                        station_af = field_text.split(";")
+                        station_af = [(int(af)+875)/10 for af in station_af]
+            self.history = {"station_pi": station_pi, "station_name": station_name, "station_text": station_text, "station_pty": station_pty, "station_af": station_af}
             print(self.history)
             return self.history
         except:
@@ -491,7 +526,15 @@ class RDS:
             pass # no charlimit
         # Colors
         style_provider = Gtk.CssProvider()
-        if isinstance(entry, Gtk.Entry):
+        if entry_name == "af_input":
+            af = entry.get_text()
+            try:
+                af = float(af)
+                bg_color = "#33D17A" if float(entry.get_text()) >= 87.6 and float(entry.get_text()) <= 107.9 else "#F57900"
+            except:
+                bg_color = "#F57900"
+            css = "#" + entry_name + " { background: " +  bg_color + "; }"
+        elif isinstance(entry, Gtk.Entry):
             bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
             css = "#" + entry_name + " { background: " +  bg_color + "; }"
         else:
@@ -518,7 +561,108 @@ class FileEventHandler(FileSystemEventHandler):
             self.ignore -= 1
 
     def ignore_events(self, value):
-        self.ignore = value
+        self.ignore += value
+
+class AFDialog():
+    def __init__(self, win):
+        self.win = Gtk.Window()
+        self.setup_window(300, 300)
+        self.win.set_title("AF MGMT")
+        self.mainwin = win
+        self.create_layout()
+        self.setup_afbox()
+        self.setup_input()
+        self.setup_add_button()
+        self.setup_clear_button()
+        self.update_afbox(self.mainwin.rds.get_history())
+        self.win.show_all()
+
+    def setup_window(self, width, height):
+        self.win.set_default_size(width, height)
+        # self.win.set_resizable(False)
+        self.win.connect("destroy", self.on_close)
+
+    def create_layout(self):
+        self.win_layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        self.scrolled_win = Gtk.ScrolledWindow()
+        self.scrolled_win.set_hexpand(True)
+        self.scrolled_win.set_vexpand(True)
+
+        self.win_bottom = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        self.win_layout.add(self.scrolled_win)
+        self.win_layout.add(self.win_bottom)
+
+        self.win.add(self.win_layout)
+
+    def setup_afbox(self):
+        self.afbox = Gtk.ListBox()
+        self.af_store = Gio.ListStore()
+        self.afbox.bind_model(self.af_store, self.generate_afbox_item)
+        self.scrolled_win.add(self.afbox)
+        # self.afbox.show_all()
+
+    def generate_afbox_item(self, input):
+        row = Gtk.ListBoxRow()
+
+        title_label = Gtk.Label()
+        title_label.set_text(input.frequency)
+        row.add(title_label)
+        
+        return row
+
+    def add_af_entry(self, af):
+        self.af_store.append(AFRow(float(af)))
+        self.afbox.show_all()
+
+    def setup_input(self):
+        self.input = Gtk.Entry(name="af_input")
+        self.input.connect("changed", self.mainwin.rds.rds_entry_changing, "af_input")
+        self.win_bottom.add(self.input)
+
+    def setup_add_button(self):
+        self.add_button = Gtk.Button(label="Add")
+        self.add_button.connect("clicked", self.send_af)
+        self.win_bottom.add(self.add_button)
+
+    def setup_clear_button(self):
+        self.clear_button = Gtk.Button(label="Clear")
+        self.clear_button.connect("clicked", self.clear_af)
+        self.win_bottom.add(self.clear_button)
+
+    def send_af(self, button):
+        af = self.input.get_text()
+        af_float = 0
+        try:
+            af_float = float(af)
+        except:
+            return
+        if float(af) >= 87.6 and float(af) <= 107.9 and len(self.af_store) < 25:
+            self.mainwin.file_handler.ignore_events(1)
+            os.system(f'echo "AF {af}" > /tmp/rdspipe')
+            self.add_af_entry(af)
+            self.input.set_text("")
+
+    def clear_af(self, button):
+        self.mainwin.previous_rds_history["station_af"] = None
+        os.system(f'echo "AF CLEAR" > /tmp/rdspipe')
+
+    def update_afbox(self, rds_history):
+        self.af_store.remove_all()
+        for af in rds_history["station_af"]:
+            self.af_store.append(AFRow(af))
+        # self.afbox.show_all()
+
+    def on_close(self, win):
+        self.mainwin.af_dialog_exists = False
+
+class AFRow(GObject.GObject):
+    frequency = GObject.Property(type = str)
+
+    def __init__(self, frequency):
+        GObject.GObject.__init__(self)
+        self.frequency = frequency
 
 if __name__ == "__main__":
     mainWin = Window(500, 400)
