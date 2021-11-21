@@ -62,6 +62,7 @@ struct {
 
 char *rdsh_filename = NULL; // RDS-history filename
 int varying_ps = 1;
+int suppress_write = 0;
 
 uint16_t offset_words[] = {0x0FC, 0x198, 0x168, 0x1B4};
 // We don't handle offset word C' here for the sake of simplicity
@@ -271,7 +272,7 @@ void bind_rds_history(char *filename) {
 }
 
 void write_rds_history() {
-    if (rdsh_filename == NULL)
+    if (rdsh_filename == NULL || suppress_write)
     {
         return;
     }
@@ -303,6 +304,21 @@ void write_rds_history() {
     // TA
     if (rds_params.ta) write(historyfd, "TA ON\n", 6);
 
+    // AFs
+    if (af_count > 0)
+    {
+        write(historyfd, "AF ", 3);
+        for (int i = 0; i < af_count; i++) {
+            if (i == af_count-1) {
+                snprintf(buf, sizeof(buf), "%d", af_pool[i]);
+            } else {
+                snprintf(buf, sizeof(buf), "%d;", af_pool[i]);
+            }
+            write(historyfd, buf, strlen(buf));
+        }
+        write(historyfd, "\n", 1);
+    }
+    
     close(historyfd);
 }
 
@@ -346,7 +362,9 @@ void add_rds_af(uint8_t af) { // Binary number according to AF code table
     if (af_count <= 24) {
         af_pool[af_count] = af;
         af_count++;
-        return;
+        if (!suppress_write) {
+            write_rds_history();
+        }
     } else if (af == 0) {
         fprintf(stderr, "Error: Invalid AF.\n");
     } else {
@@ -376,7 +394,8 @@ int reuse_rds_history(int dbus_mediainfo) {
 
     int return_value = HIST_REUSED;
     FILE *rdshistory = fopen (rdsh_filename, "r");
-    char res[100];
+    char res[100] = {0};
+    suppress_write = 1;
     
     while (fgets(res, 100, rdshistory))
     {
@@ -410,6 +429,17 @@ int reuse_rds_history(int dbus_mediainfo) {
             uint16_t pi = (uint16_t) strtol(arg, NULL, 16);
             set_rds_pi(pi);
         }
+        else if(res[0] == 'A' && res[1] == 'F') {
+            printf("\nreading afs: %s\n", arg);
+            char *af = strtok(arg, ";");
+            while (af != NULL)
+            {
+                add_rds_af((uint8_t)atoi(af));
+                af = strtok(NULL, arg);
+            }
+        }
     }
+    suppress_write = 0;
+    write_rds_history();
     return return_value;
 }

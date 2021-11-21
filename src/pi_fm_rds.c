@@ -482,6 +482,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
 
     if(!history_reused) {
         if(rds_data.ps) {
+            disable_varying_ps();
             set_rds_ps(rds_data.ps);
         } else {
             rds_data.ps = "<Varying>";
@@ -489,7 +490,14 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
         }
         printf("PI: %04X, PS: \"%s\", PTY: %d.\nRT: \"%s\"\n", rds_data.pi, rds_data.ps, rds_data.pty, rds_data.rt);
     } else
+    {
         printf("RDS parameters set from history.\n");
+        if (history_reused == 2)
+        {
+            varying_ps = 1;
+        }
+    }
+        
 
     // Initialize the control pipe reader
     if(control_pipe) {
@@ -504,6 +512,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
     // Initialize dbus_mediainfo
     if(dbus_mediainfo)
     {
+        disable_varying_ps();
         strcpy(mediainfo_new, "NO MEDIA");
         pthread_create(&dbus_thread_id, NULL, dbus_main, (void*)mediainfo_new);
     }    
@@ -636,6 +645,7 @@ int main(int argc, char **argv) {
             dbus_mediainfo = 1;
             if (rds_data.ps == NULL)
             {
+                printf("setting medainf\n");
                 rds_data.ps = "MEDIAINF";
             }
         }
