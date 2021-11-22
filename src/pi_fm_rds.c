@@ -564,9 +564,13 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
             
             // get more baseband samples if necessary
             if(data_len == 0) {
+                // clock_t t = clock();
                 if( fm_mpx_get_samples(data) < 0 ) {
                     terminate(0);
                 }
+                // t = clock() - t;
+                // double time_taken = ((double)t)/CLOCKS_PER_SEC;
+                // printf("get_sample elapsed: %f\n", time_taken);
                 data_len = DATA_SIZE;
                 data_index = 0;
             }

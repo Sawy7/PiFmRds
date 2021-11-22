@@ -41,7 +41,7 @@ struct rds_data_s
 
 extern int open_control_pipe(char *filename);
 extern int close_control_pipe();
-extern int poll_control_pipe();
+extern int poll_control_pipe(int dbus_mediainfo);
 
 // void create_rds_history(char *filename, struct rds_data_s *rds_data);
 // void write_rds_history(char *res);

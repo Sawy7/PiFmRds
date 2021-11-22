@@ -431,7 +431,6 @@ int reuse_rds_history(int dbus_mediainfo) {
             set_rds_pi(pi);
         }
         else if(res[0] == 'A' && res[1] == 'F') {
-            printf("\nreading afs: %s\n", arg);
             char *af = strtok(arg, ";");
             while (af != NULL)
             {

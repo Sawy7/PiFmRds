@@ -59,6 +59,8 @@ class Window:
             self.win.present()
         else:
             self.win.hide()
+            if self.af_dialog_exists:
+                self.af_dialog.win.close()
         self.window_hidden = not self.window_hidden
 
     def setup_history_modifications(self):
@@ -182,6 +184,9 @@ class Window:
         # Setup RDS button
         self.rds_button = self.get_rds_button()
 
+        # Setup TA
+        self.station_ta = self.get_station_ta()
+
         # Setup AF button
         self.af_button = self.get_af_button()
 
@@ -292,10 +297,26 @@ class Window:
 
         return rds_button
 
+    def get_station_ta(self):
+        station_ta_label = Gtk.Label()
+        station_ta_label.set_text("Traffic Ann.")
+        station_ta_label.set_margin_top(20)
+        self.win_right.attach(station_ta_label, 0,5,1,1)
+        station_ta_label.show()
+
+        station_ta = Gtk.Switch()
+        station_ta.set_state(self.autords_state)
+        station_ta.connect("state-set", self.rds.toggle_ta)
+        station_ta.set_margin_top(20)
+        self.win_right.attach(station_ta, 1,5,1,1)
+        station_ta.show()
+
+        return station_ta
+
     def get_af_button(self):
         af_button = Gtk.Button(label="Manage AFs")
         af_button.set_margin_top(20)
-        self.win_right.attach(af_button, 0,5,2,1)
+        self.win_right.attach(af_button, 0,6,2,1)
         af_button.show()
         af_button.grab_focus()
         af_button.connect("clicked", self.show_af_dialog)
@@ -348,14 +369,14 @@ class Window:
         rds_metadata_label = Gtk.Label()
         rds_metadata_label.set_text("Auto-RDS")
         rds_metadata_label.set_margin_top(20)
-        self.win_right.attach(rds_metadata_label, 0,6,1,1)
+        self.win_right.attach(rds_metadata_label, 0,7,1,1)
         rds_metadata_label.show()
 
         rds_metadata = Gtk.Switch()
         rds_metadata.set_state(self.autords_state)
         rds_metadata.connect("state-set", self.autords.toggle)
         rds_metadata.set_margin_top(20)
-        self.win_right.attach(rds_metadata, 1,6,1,1)
+        self.win_right.attach(rds_metadata, 1,7,1,1)
         rds_metadata.show()
 
     def disable_entry(self, entry, entry_name):
@@ -468,8 +489,8 @@ class RDS:
             event_counter += 1
         if station_text_new != "" and station_text_new != "<Auto>":
             event_counter += 1
-        if station_pty_new != "":
-            event_counter += 1
+        # if station_pty_new != "":
+        #     event_counter += 1
         self.window.file_handler.ignore_events(event_counter-1)
             
         if station_pi_new != "":
@@ -545,6 +566,11 @@ class RDS:
             Gdk.Screen.get_default(), style_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
+
+    def toggle_ta(self, switch, state):
+        option = "ON" if state else "OFF"
+        self.window.file_handler.ignore_events(1)
+        os.system(f'echo "TA {option}" > /tmp/rdspipe')
 
 class FileEventHandler(FileSystemEventHandler):
     def __init__(self, window):

@@ -32,6 +32,7 @@
 #include "rds.h"
 // #include "pulse_virtual.h"
 #include "pulse_module.h"
+#include "control_pipe.h"
 
 
 #define PI 3.141592654
@@ -173,8 +174,6 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
     return 0;
 }
 
-int silence_counter = 0;
-
 // samples provided by this function are in 0..10: they need to be divided by
 // 10 after.
 int fm_mpx_get_samples(float *mpx_buffer) {
@@ -189,16 +188,9 @@ int fm_mpx_get_samples(float *mpx_buffer) {
             if(audio_len == 0) {
                 for(int j=0; j<2; j++) { // one retry
                     audio_len = sf_read_float(inf, audio_buffer, length);
-                    if (audio_len == 0) {
-                        if (silence_counter >= 100000) // TODO: Think about this some more
-                        {
-                            silence_counter = 0;
-                            printf("No audio is playing. Program stopped...\n");
-                            fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) & ~O_NONBLOCK);
-                        }
-                        silence_counter++;
-                    } else {
-                        fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) | O_NONBLOCK);
+                    if (audio_len == 0 && pa_mode) { // Program needs to keep running, even if no desktop audio - for RDS mainly. We introduce artificial latency.
+                            usleep(10000);
+                            return 0;
                     }
                     
                     if (audio_len < 0) {
@@ -206,10 +198,7 @@ int fm_mpx_get_samples(float *mpx_buffer) {
                         return -1;
                     }
                     if(audio_len == 0) {
-                        if (pa_mode) {
-                            memset(audio_buffer, 0, length);
-                            break;
-                        } else if( sf_seek(inf, 0, SEEK_SET) < 0 ) {
+                        if( sf_seek(inf, 0, SEEK_SET) < 0 ) {
                             fprintf(stderr, "Could not rewind in audio file, terminating\n");
                             return -1;
                         }
