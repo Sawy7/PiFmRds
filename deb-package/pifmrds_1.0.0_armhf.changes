@@ -1,0 +1,31 @@
+Format: 1.8
+Date: Sat, 27 Nov 2021 21:45:34 +0100
+Source: pifmrds
+Binary: pifmrds
+Architecture: source armhf
+Version: 1.0.0
+Distribution: buster
+Urgency: medium
+Maintainer: Jan Nemec <nemec.jan123@gmail.com>
+Changed-By: Jan Nemec <nemec.jan123@gmail.com>
+Description:
+ pifmrds    - Your RPi is now FM transmitter!
+Changes:
+ pifmrds (1.0.0) buster; urgency=medium
+ .
+   * First time packaging pifmrds.
+Checksums-Sha1:
+ 0c0ad963a2f805af64c45bae33c12eaddd5a3150 492 pifmrds_1.0.0.dsc
+ 29c5dc7955ec3e40bc91cd7b5a1b140170484e3f 2174 pifmrds_1.0.0.tar.gz
+ b6c923b426746152173466a40bc8f633568643e4 4716 pifmrds_1.0.0_armhf.buildinfo
+ 89a37a3bbc15a3a105e8fbb409aa26282b31e032 1836 pifmrds_1.0.0_armhf.deb
+Checksums-Sha256:
+ d67a1077315fb49a78fe159a11bf4e57567c09fd4bc8ba0b9c37fc3d6f413468 492 pifmrds_1.0.0.dsc
+ a8e4c9f7e986d4b7df799a65d1820c09162a21a856070d68b26626aa6bc63ac3 2174 pifmrds_1.0.0.tar.gz
+ 9cf50c0f989efa8689641689e2b2020f8e7adb3c5d4f8e30ad334ea697cd027d 4716 pifmrds_1.0.0_armhf.buildinfo
+ 6b45a2e2e12428be9cce39b65b26fa895295b6ba91b7e59a1c37febedd184b94 1836 pifmrds_1.0.0_armhf.deb
+Files:
+ 51b126eb3d3bbcd69dd5687d7c9b3e6b 492 unknown optional pifmrds_1.0.0.dsc
+ ba3dc609b88745374a3877c9c0b20975 2174 unknown optional pifmrds_1.0.0.tar.gz
+ 648d520ea68a1a7b823e5e63b973fd76 4716 unknown optional pifmrds_1.0.0_armhf.buildinfo
+ 50acd9de21cf8ca6183244d102c30efb 1836 unknown optional pifmrds_1.0.0_armhf.deb

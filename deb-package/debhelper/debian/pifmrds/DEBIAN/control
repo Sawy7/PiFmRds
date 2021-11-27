@@ -1,0 +1,9 @@
+Package: pifmrds
+Version: 1.0.0
+Architecture: armhf
+Maintainer: Jan Nemec <nemec.jan123@gmail.com>
+Installed-Size: 13
+Depends: init-system-helpers (>= 1.52)
+Section: unknown
+Priority: optional
+Description: Your RPi is now FM transmitter!

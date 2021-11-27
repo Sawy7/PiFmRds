@@ -1,0 +1,5 @@
+pifmrds (1.0.0) buster; urgency=medium
+
+  * First time packaging pifmrds.
+
+ -- Jan Nemec <nemec.jan123@gmail.com>  Sat, 27 Nov 2021 21:45:34 +0100

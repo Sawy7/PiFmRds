@@ -1,0 +1,11 @@
+Source: pifmrds
+Section: unknown
+Priority: optional
+Maintainer: Jan Nemec <nemec.jan123@gmail.com>
+Build-Depends: build-essential, debhelper (>= 10)
+
+Package: pifmrds
+Version: 1.0.0
+Architecture: armhf
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Your RPi is now FM transmitter!

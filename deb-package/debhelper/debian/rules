@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+copy:
+	mkdir -p debian/pifmrds/usr/local/bin
+	cp ../../src/pi_fm_rds debian/pifmrds/usr/local/bin/pifmrds
+	chown root debian/pifmrds/usr/local/bin/pifmrds
+	chmod +s debian/pifmrds/usr/local/bin/pifmrds
+	cp ../../systemd/pi_fm_runner debian/pifmrds/usr/local/bin/
+	chmod 777 debian/pifmrds/usr/local/bin/pi_fm_runner
+	cp ../../systemd/pifmrds.service debian/pifmrds.user.service
+
+%: copy
+	dh_testroot
+	dh_prep
+	dh_installdocs
+	dh_installchangelogs
+	dh_perl
+	dh_link
+	dh_strip_nondeterminism
+	dh_compress
+	dh_fixperms
+	dh_missing
+	dh_strip
+	dh_makeshlibs
+	dh_shlibdeps
+	dh_installsystemduser
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
