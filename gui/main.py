@@ -141,7 +141,7 @@ class Window:
         self.fmstatus_label.show()
 
     def get_current_freq(self):
-        freq = str(subprocess.check_output("systemctl --user status pi_fm_rds | grep freq", shell=True))
+        freq = str(subprocess.check_output("systemctl --user status pifmrds | grep freq", shell=True))
         freq = re.findall("-freq (\d*.\d*)", freq)[0]
         style_provider = Gtk.CssProvider()
         css = "#freq_spin { background: #33D17A; } #station_name { background: #33D17A; } #station_text { background: #33D17A; }"
@@ -407,7 +407,7 @@ class AutoRDS:
 
     def get_state(self):
         file_content = None
-        with open("/usr/bin/pi_fm_runner", "r") as f:
+        with open("/usr/local/bin/pi_fm_runner", "r") as f:
             file_content = f.read()
         if re.search("-dbus", file_content) is not None:
             return True
@@ -416,17 +416,17 @@ class AutoRDS:
 
     def toggle(self, switch, state):
         file_content = None
-        with open("/usr/bin/pi_fm_runner", "r") as f:
+        with open("/usr/local/bin/pi_fm_runner", "r") as f:
             file_content = f.read()
             if state:
                 file_content += " -dbus"
             else:
                 file_content = re.sub(" -dbus", f"", file_content)
 
-        with open("/usr/bin/pi_fm_runner", "w") as f:
+        with open("/usr/local/bin/pi_fm_runner", "w") as f:
             f.write(file_content)
 
-        os.system("systemctl --user restart pi_fm_rds")
+        os.system("systemctl --user restart pifmrds")
         self.window.reset()
 
 class Transmission:
@@ -435,13 +435,13 @@ class Transmission:
 
     def toggle(self, switch, state):
         if state == True:
-            os.system("systemctl --user start pi_fm_rds")
+            os.system("systemctl --user start pifmrds")
         else:
-            os.system("systemctl --user stop pi_fm_rds")
+            os.system("systemctl --user stop pifmrds")
         self.window.reset()
 
     def get_state(self):
-        fmstatus = os.system("systemctl --user is-active --quiet pi_fm_rds")
+        fmstatus = os.system("systemctl --user is-active --quiet pifmrds")
         if fmstatus == 0:
             return True
         else:
@@ -449,15 +449,15 @@ class Transmission:
 
     def change_frequency(self, button, freq_spin):
         file_content = None
-        with open("/usr/bin/pi_fm_runner", "r") as f:
+        with open("/usr/local/bin/pi_fm_runner", "r") as f:
             file_content = f.read()
             new_freq = freq_spin.get_text().replace(",", ".")
             file_content = re.sub("-freq \d*.\d*", f"-freq {new_freq}", file_content)
 
-        with open("/usr/bin/pi_fm_runner", "w") as f:
+        with open("/usr/local/bin/pi_fm_runner", "w") as f:
             f.write(file_content)
 
-        os.system("systemctl --user restart pi_fm_rds")
+        os.system("systemctl --user restart pifmrds")
         self.window.reset()
 
     def freq_entry_changing(self, spinbutton, freq):

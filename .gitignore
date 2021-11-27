@@ -4,3 +4,4 @@ src/test
 *.o
 .vscode
 pi_fm_rds
+*.deb
