@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+clean:
+	dh_prep
+
 copy:
 	mkdir -p debian/pifmrds/usr/local/bin
 	cp ../../src/pi_fm_rds debian/pifmrds/usr/local/bin/pifmrds
@@ -8,17 +11,19 @@ copy:
 	cp ../../systemd/pi_fm_runner debian/pifmrds/usr/local/bin/
 	chmod 777 debian/pifmrds/usr/local/bin/pi_fm_runner
 	cp ../../systemd/pifmrds.service debian/pifmrds.user.service
+	cp ../../gui/main.py debian/pifmrds/usr/local/bin/pifmrds-gui
+	chmod +x debian/pifmrds/usr/local/bin/pifmrds-gui
+	mkdir -p debian/pifmrds/usr/share/applications
+	cp ../../gui/pifmrds-gui.desktop debian/pifmrds/usr/share/applications/
 
-%: copy
+%: clean copy
 	dh_testroot
-	dh_prep
 	dh_installdocs
 	dh_installchangelogs
 	dh_perl
 	dh_link
 	dh_strip_nondeterminism
 	dh_compress
-	dh_fixperms
 	dh_missing
 	dh_strip
 	dh_makeshlibs

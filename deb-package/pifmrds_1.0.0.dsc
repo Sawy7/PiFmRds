@@ -8,8 +8,8 @@ Build-Depends: build-essential, debhelper (>= 10)
 Package-List:
  pifmrds deb unknown optional arch=armhf
 Checksums-Sha1:
- 29c5dc7955ec3e40bc91cd7b5a1b140170484e3f 2174 pifmrds_1.0.0.tar.gz
+ 69611442bf56169b64b22472b75594906966a59b 75059 pifmrds_1.0.0.tar.gz
 Checksums-Sha256:
- a8e4c9f7e986d4b7df799a65d1820c09162a21a856070d68b26626aa6bc63ac3 2174 pifmrds_1.0.0.tar.gz
+ e3260a3b04b81f752d81ae1cdaff500086be717b83b0480fb2883fcd045f6ffc 75059 pifmrds_1.0.0.tar.gz
 Files:
- ba3dc609b88745374a3877c9c0b20975 2174 pifmrds_1.0.0.tar.gz
+ 8b551599e65d2bb8bac8ea79613951b2 75059 pifmrds_1.0.0.tar.gz

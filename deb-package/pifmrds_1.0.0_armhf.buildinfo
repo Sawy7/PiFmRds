@@ -4,17 +4,20 @@ Binary: pifmrds
 Architecture: armhf source
 Version: 1.0.0
 Checksums-Md5:
- 51b126eb3d3bbcd69dd5687d7c9b3e6b 492 pifmrds_1.0.0.dsc
- 50acd9de21cf8ca6183244d102c30efb 1836 pifmrds_1.0.0_armhf.deb
+ 81aceba78beea3b4a9be05a760a589c6 495 pifmrds_1.0.0.dsc
+ 73dfff1fd89a67c52c6d1d776092a403 48256 pifmrds-dbgsym_1.0.0_armhf.deb
+ 7beace45e5dfaaf2e8649eae33cece77 21388 pifmrds_1.0.0_armhf.deb
 Checksums-Sha1:
- 0c0ad963a2f805af64c45bae33c12eaddd5a3150 492 pifmrds_1.0.0.dsc
- 89a37a3bbc15a3a105e8fbb409aa26282b31e032 1836 pifmrds_1.0.0_armhf.deb
+ d970d63632ecf4ca64e82acb1e58cf5867fe5316 495 pifmrds_1.0.0.dsc
+ ba6fbf70f876109d03b46f2db30f599f9788bf20 48256 pifmrds-dbgsym_1.0.0_armhf.deb
+ 807d8ef427d6da4aed45dd79717758977d69d6a2 21388 pifmrds_1.0.0_armhf.deb
 Checksums-Sha256:
- d67a1077315fb49a78fe159a11bf4e57567c09fd4bc8ba0b9c37fc3d6f413468 492 pifmrds_1.0.0.dsc
- 6b45a2e2e12428be9cce39b65b26fa895295b6ba91b7e59a1c37febedd184b94 1836 pifmrds_1.0.0_armhf.deb
+ 3673c40eafed12b7f6811a88c4013fe19e61bfeae645356459f714ba75e4c95b 495 pifmrds_1.0.0.dsc
+ 7908d54c191484afa6dacfeb72ea11e3900375f5220be6463ebf66a5fa0fd8c4 48256 pifmrds-dbgsym_1.0.0_armhf.deb
+ 497e8cddd2393ded785f65a8e01e0316b848eba3d5d9b98be80e23f34c16a035 21388 pifmrds_1.0.0_armhf.deb
 Build-Origin: Raspbian
 Build-Architecture: armhf
-Build-Date: Sat, 27 Nov 2021 22:25:45 +0100
+Build-Date: Sat, 04 Dec 2021 12:57:34 +0100
 Build-Tainted-By:
  merged-usr-via-symlinks
  usr-local-has-programs
