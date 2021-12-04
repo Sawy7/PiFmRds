@@ -4,9 +4,9 @@ Version: 1.0.0
 Auto-Built-Package: debug-symbols
 Architecture: armhf
 Maintainer: Jan Nemec <nemec.jan123@gmail.com>
-Installed-Size: 68
+Installed-Size: 125
 Depends: pifmrds (= 1.0.0)
 Section: debug
 Priority: optional
 Description: debug symbols for pifmrds
-Build-Ids: 77a1bd7e1d6fb2139b79b2adecc2a6ea2e309ca3
+Build-Ids: 77a1bd7e1d6fb2139b79b2adecc2a6ea2e309ca3 c04eb72ba89315acfa47575d8be931e0f7a0e2c8

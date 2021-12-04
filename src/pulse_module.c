@@ -69,8 +69,15 @@ void list_sinks_cb(pa_context *c, const pa_sink_info *i, int eol, void *userdata
 
     if (i->owner_module == (uint32_t)userdata)
     {
+        pa_context_set_default_sink(c, i->name, default_sink_cb, NULL);
         pa_context_get_sink_input_info_list(c, list_inputs_cb, (void*)i->index);
     }
+}
+
+void default_sink_cb(pa_context *c, int success, void *userdata)
+{
+    if (success == 0)
+        printf("Set sink module as default.\n");    
 }
 
 void list_inputs_cb(pa_context *c, const pa_sink_input_info *i, int eol, void *userdata)

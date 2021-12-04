@@ -12,6 +12,7 @@ from watchdog.events import FileSystemEventHandler
 class Window:
     def __init__(self, width, height):
         self.win = Gtk.Window()
+        self.set_icon()
         self.setup_window(width, height)
         self.create_layout()
         self.setup_transmisson_object()
@@ -19,6 +20,11 @@ class Window:
         self.setup_rds_object()
         self.setup_headerbar()
         self.setup_statusicon()
+
+    def set_icon(self):
+        icontheme = Gtk.IconTheme.get_default()
+        self.icon = icontheme.load_icon("audio-card", 128, 0)
+        self.win.set_icon(self.icon)
 
     def setup_window(self, width, height):
         self.win.set_default_size(width, height)
@@ -37,7 +43,7 @@ class Window:
     def setup_headerbar(self):
         self.header_bar = Gtk.HeaderBar()
         self.header_bar.set_show_close_button(True)
-        self.header_bar.props.title = "PiFmRds"
+        self.header_bar.props.title = "PiFmRds GUI"
         self.win.set_titlebar(self.header_bar)
 
         self.service_state = self.transmission.get_state()
@@ -49,7 +55,7 @@ class Window:
     def setup_statusicon(self):
         self.window_hidden = False
         self.statusicon = Gtk.StatusIcon()
-        self.statusicon.set_from_file("/home/pi/sound-off-icon-40944.png") # TODO: Find/make image
+        self.statusicon.set_from_pixbuf(self.icon)
         self.statusicon.connect('button-press-event', self.statusicon_react)
 
     def statusicon_react(self, *args): # TODO: Make a menu

@@ -1,2 +1,0 @@
-#!/bin/sh
-/usr/local/bin/pifmrds -ctl rdspipe -rdsh rdshistory.txt -pulse -freq 87.5
