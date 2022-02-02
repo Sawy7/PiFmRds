@@ -5,7 +5,7 @@ STD_CFLAGS = -Wall -std=gnu99 -c -g
 UNAME := $(shell uname -m)
 
 # Determine Raspberry Pi version (if 2 or greater)
-RPI_VERSION := $(shell cat /proc/device-tree/model | grep -a -o "Raspberry\sPi\s[0-9]" | grep -o "[0-9]")
+RPI_VERSION := $(shell cat /proc/device-tree/model | grep -a -o "Raspberry\sPi\s[0-9]\|Raspberry\sPi\sZero\s[0-9]" | grep -o "[0-9]")
 
 # Determine the hardware platform and set proper compilation flags
 ifeq ($(UNAME), armv6l)
@@ -98,27 +98,15 @@ dbus_mediainfo.o: dbus_mediainfo.c dbus_mediainfo.h
 deps:
 	sudo apt update
 	sudo apt -y upgrade
-	sudo apt -y install git wget libpulse-dev libsndfile1-dev
-
-# install: app
-# 	sudo cp pi_fm_rds /usr/bin/
-# 	sudo chown root /usr/bin/pi_fm_rds
-# 	sudo chmod +s /usr/bin/pi_fm_rds
-# 	sudo cp ../systemd/pi_fm_runner /usr/bin/
-# 	sudo chmod 777 /usr/bin/pi_fm_runner
-# 	mkdir -p ~/.local/share/systemd/user/
-# 	cp ../systemd/pi_fm_rds.service ~/.local/share/systemd/user/
-# 	systemctl --user enable pi_fm_rds.service
-
-# uninstall:
-# 	systemctl --user disable pi_fm_rds.service
-# 	sudo rm /usr/bin/pi_fm_rds
-# 	sudo rm /usr/bin/pi_fm_runner
-# 	rm ~/.local/share/systemd/user/pi_fm_rds.service
+	sudo apt -y install git wget libpulse-dev libsndfile1-dev libdbus-1-dev libdbus-glib-1-2 libdbus-glib-1-dev debhelper
 
 makedeb: app
 	cd ../deb-package/debhelper; \
 	./build.sh
+
+install: makedeb
+	sudo dpkg -i ../deb-package/pifmrds_1.0.0_armhf.deb
+	sudo apt --fix-broken install -y
 
 clean:
 	rm -f *.o pi_fm_rds

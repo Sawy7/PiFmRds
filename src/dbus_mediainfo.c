@@ -1,3 +1,28 @@
+/*
+    PiFmRds - FM/RDS transmitter for the Raspberry Pi
+    Copyright (C) 2021 Jan Němec
+    
+    See https://github.com/ChristopheJacquet/PiFmRds
+    
+    rds_wav.c is a test program that writes a RDS baseband signal to a WAV
+    file. It requires libsndfile.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    dbus_mediainfo.c: handles automatic radiotext by getting music metadata from dbus.
+*/
+
 #include "dbus_mediainfo.h"
 
 #include <stdio.h>
@@ -230,6 +255,9 @@ void export_metadata(GVariant *metadata)
     g_variant_lookup(metadata, "xesam:artist", "^a&s", &artists);
     g_variant_lookup(metadata, "xesam:title", "s", &title);
 
+    // gchar *value_str = g_variant_print(metadata, TRUE);
+    // printf("md: %s\n", (char*)value_str);
+
     // Song must have well defined ID3 (or equivalent) metadata
     if (artists && title)
     {
@@ -238,6 +266,8 @@ void export_metadata(GVariant *metadata)
     else
     {
         snprintf(metadata_text, METADATA_TEXT_SIZE, "NO METADATA");
+        // This only works in signal, so it's ok
+        g_main_loop_quit(loop);
     }
 
     g_free(artists);

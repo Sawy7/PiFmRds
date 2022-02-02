@@ -1,3 +1,28 @@
+/*
+    PiFmRds - FM/RDS transmitter for the Raspberry Pi
+    Copyright (C) 2021 Jan Němec
+    
+    See https://github.com/ChristopheJacquet/PiFmRds
+    
+    rds_wav.c is a test program that writes a RDS baseband signal to a WAV
+    file. It requires libsndfile.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    pulse_module.c: creates and manages a virtual sink for pulseaudio integration.
+*/
+
 #include "pulse_module.h"
 
 pa_mainloop *pa_ml;
@@ -41,22 +66,22 @@ void sink_ready_cb(pa_context *c, uint32_t idx, void *userdata)
     module_idx = idx;
     printf("Sink created!\n");
 
-    // This is just to write file header (sndfile complains on read otherwise)
-    SF_INFO sf_info;
-    sf_info.samplerate = 44100;
-    sf_info.channels = 2;
-    sf_info.format = SF_FORMAT_IRCAM | SF_FORMAT_PCM_16;
+    // // This is just to write file header (sndfile complains on read otherwise)
+    // SF_INFO sf_info;
+    // sf_info.samplerate = 44100;
+    // sf_info.channels = 2;
+    // sf_info.format = SF_FORMAT_IRCAM | SF_FORMAT_PCM_16;
 
-    SNDFILE *inf;
-    int modulefd = open("/tmp/pifmfifo", O_WRONLY);
+    // SNDFILE *inf;
+    // int modulefd = open("/tmp/pifmfifo", O_WRONLY);
 
-    if(! (inf = sf_open_fd(modulefd, SFM_WRITE, &sf_info, 0))) {
-        fprintf(stderr, "Error: could not open write pipe; %s.\n", sf_strerror (inf));
-    } else {
-        printf("Using write pipe.\n");
-    }
-    sf_close(inf);
-    close(modulefd);
+    // if(! (inf = sf_open_fd(modulefd, SFM_WRITE, &sf_info, 0))) {
+    //     fprintf(stderr, "Error: could not open write pipe; %s.\n", sf_strerror (inf));
+    // } else {
+    //     printf("Using write pipe.\n");
+    // }
+    // sf_close(inf);
+    // close(modulefd);
 
     pa_context_get_sink_info_list(c, list_sinks_cb, (void*)idx);
 }

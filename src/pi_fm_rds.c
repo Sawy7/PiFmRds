@@ -3,6 +3,7 @@
  * Copyright (C) 2014, 2015 Christophe Jacquet, F8FTK
  * Copyright (C) 2012, 2015 Richard Hirst
  * Copyright (C) 2012 Oliver Mattos and Oskar Weigl
+ * Copyright (C) 2021 Jan Němec
  *
  * See https://github.com/ChristopheJacquet/PiFmRds
  *

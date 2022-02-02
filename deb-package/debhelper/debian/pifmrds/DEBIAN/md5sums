@@ -1,6 +1,6 @@
 7a39720686ef2d18a6d77012af878c1a  usr/lib/systemd/user/pifmrds.service
 44b5ab1b33f70bedbd8cdce2de5067f6  usr/local/bin/pi_fm_runner
-2cb7bb7f35625f0b4adcd35b91faaab6  usr/local/bin/pifmrds
+dc23bc18c7eeae3d63aeb9f7d369a3fd  usr/local/bin/pifmrds
 cac6e5ed2d7544f2dd67f0d47f913659  usr/local/bin/pifmrds-gui
 a0f7ee6fdbd4232b6f1002c60b5a6fcc  usr/share/applications/pifmrds-gui.desktop
 bd3ff78731ddbea3136b763b993efb64  usr/share/doc/pifmrds/changelog.gz

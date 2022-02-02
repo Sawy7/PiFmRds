@@ -93,12 +93,16 @@ int fm_mpx_open(char *filename, int pulseaudio, size_t len) {
         SF_INFO sfinfo;
         pa_mode = 1;
 
-        // stdin or file on the filesystem?
+        // stdin, pulse sink or file on the filesystem?
         if(pulseaudio)
         {
             pulse_module();
             modulefd = open("/tmp/pifmfifo", O_RDONLY);
             fcntl(modulefd, F_SETFL, fcntl(modulefd, F_GETFL) | O_NONBLOCK);
+
+            sfinfo.samplerate = 44100;
+            sfinfo.channels = 2;
+            sfinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_16;
 
             if(! (inf = sf_open_fd(modulefd, SFM_READ, &sfinfo, 0))) {
                 fprintf(stderr, "Error: could not open pulse sink.\n") ;

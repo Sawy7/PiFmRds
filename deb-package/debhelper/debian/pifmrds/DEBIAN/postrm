@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-# Automatically added by dh_installsystemduser/13.2~bpo10+1
+# Automatically added by dh_installsystemduser/13.3.4
 if [ "$1" = "remove" ]; then
 	if [ -x "/usr/bin/deb-systemd-helper" ] ; then
 		deb-systemd-helper --user mask 'pifmrds.service' >/dev/null || true
@@ -14,7 +14,7 @@ if [ "$1" = "purge" ]; then
 	fi
 fi
 # End automatically added section
-# Automatically added by dh_installsystemduser/13.2~bpo10+1
+# Automatically added by dh_installsystemduser/13.3.4
 if [ "$1" = "remove" ]; then
 	if [ -x "/usr/bin/deb-systemd-helper" ] ; then
 		deb-systemd-helper --user mask 'pifmrds.service' >/dev/null || true
