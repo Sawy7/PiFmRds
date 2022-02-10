@@ -290,6 +290,17 @@ fatal(char *fmt, ...)
     terminate(0);
 }
 
+static void
+show_help(char *arg)
+{
+    if (arg != NULL)
+        fprintf(stderr, "Unrecognised argument: %s.\n", arg);
+
+    fatal("Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
+          "                  [-ps ps_text] [-rt rt_text] [-pty pty] [-ctl control_pipe]\n"
+          "                  [-rdsh history_file] [-pulse] [-dbus] [-af freqs]\n");
+}
+
 static uint32_t
 mem_virt_to_phys(void *virt)
 {
@@ -476,6 +487,12 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
         set_rds_pi(rds_data.pi);
         set_rds_rt(rds_data.rt);
         set_rds_pty(rds_data.pty);
+
+        printf("Adding specified alternative frequencies.\n");
+        for (int i = 0; i < rds_data.af_count; i++)
+        {
+            add_rds_af(rds_data.af_pool[i]);
+        }
     }
     uint16_t count = 0;
     uint16_t count2 = 0;
@@ -492,7 +509,7 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
         printf("PI: %04X, PS: \"%s\", PTY: %d.\nRT: \"%s\"\n", rds_data.pi, rds_data.ps, rds_data.pty, rds_data.rt);
     } else
     {
-        printf("RDS parameters set from history.\n");
+        printf("RDS parameters set from history. All explicit RDS parameters ignored.\n");
         if (history_reused == 2)
         {
             varying_ps = 1;
@@ -598,73 +615,114 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
 
 
 int main(int argc, char **argv) {
+    // Parameter variables
     char *audio_file = NULL;
     int pulseaudio = 0;
     int dbus_mediainfo = 0;
     char *control_pipe = NULL;
     uint32_t carrier_freq = 107900000;
+    float ppm = 0;
+    
+    // RDS specifically
     struct rds_data_s rds_data;
     rds_data.ps = NULL;
     rds_data.rt = "PiFmRds: live FM-RDS transmission from the RaspberryPi";
     rds_data.pi = 0x1234;
     rds_data.pty = 0;
-    float ppm = 0;
+    rds_data.af_count = 0;
+    rds_data.ps_var = 1;
+    rds_data.rds_set = 0;
     
-    // Parse command-line arguments
-    for(int i=1; i<argc; i++) {
+    for (int i = 1; i < argc; i++)
+    {
         char *arg = argv[i];
         char *param = NULL;
-        
+
         if(arg[0] == '-' && i+1 < argc) param = argv[i+1];
-        
-        if((strcmp("-wav", arg)==0 || strcmp("-audio", arg)==0) && param != NULL) {
-            i++;
-            audio_file = param;
-        } else if(strcmp("-pulse", arg)==0) {
+
+        if (strcmp("-pulse", arg) == 0) {
             pulseaudio = 1;
-        } else if(strcmp("-freq", arg)==0 && param != NULL) {
-            i++;
-            carrier_freq = 1e6 * atof(param);
-            if(carrier_freq < 76e6 || carrier_freq > 108e6)
-                fatal("Incorrect frequency specification. Must be in megahertz, of the form 107.9, between 76 and 108.\n");
-        } else if(strcmp("-pi", arg)==0 && param != NULL) {
-            i++;
-            rds_data.pi = (uint16_t) strtol(param, NULL, 16);
-        } else if(strcmp("-ps", arg)==0 && param != NULL) {
-            i++;
-            rds_data.ps = param;
-        } else if(strcmp("-rt", arg)==0 && param != NULL) {
-            i++;
-            rds_data.rt = param;
-        } else if(strcmp("-pty", arg)==0 && param != NULL) {
-            i++;
-            rds_data.pty = (uint8_t) atoi(param);
-            if (rds_data.pty > 31) rds_data.pty = 31;
-        } else if(strcmp("-ppm", arg)==0 && param != NULL) {
-            i++;
-            ppm = atof(param);
-        } else if(strcmp("-ctl", arg)==0 && param != NULL) {
-            i++;
-            control_pipe = param;
-        } else if(strcmp("-dbus", arg)==0) {
+        }
+        else if(strcmp("-dbus", arg) == 0) {
             dbus_mediainfo = 1;
-            if (rds_data.ps == NULL)
+        }
+        else if (strcmp("-help", arg) == 0)
+        {
+            show_help(NULL);
+        }
+        else if (param != NULL)
+        {
+            if (strcmp("-wav", arg) == 0 || strcmp("-audio", arg) == 0)
             {
-                printf("setting medainf\n");
-                rds_data.ps = "MEDIAINF";
+                i++;
+                audio_file = param;
+            }
+            else if (strcmp("-freq", arg) == 0) {
+                i++;
+                carrier_freq = 1e6 * atof(param);
+                if (carrier_freq < 76e6 || carrier_freq > 108e6)
+                    fatal("Incorrect frequency specification. Must be in megahertz, of the form 107.9, between 76 and 108.\n");
+            }
+            else if (strcmp("-pi", arg) == 0) {
+                i++;
+                rds_data.pi = (uint16_t) strtol(param, NULL, 16);
+                rds_data.rds_set = 1;
+            }
+            else if (strcmp("-ps", arg) == 0) {
+                i++;
+                rds_data.ps = param;
+                rds_data.ps_var = 0;
+                rds_data.rds_set = 1;
+            }
+            else if (strcmp("-rt", arg) == 0) {
+                i++;
+                rds_data.rt = param;
+                rds_data.rds_set = 1;
+            }
+            else if (strcmp("-pty", arg) == 0) {
+                i++;
+                rds_data.pty = (uint8_t) atoi(param);
+                if (rds_data.pty > 31) rds_data.pty = 31;
+                rds_data.rds_set = 1;
+            }
+            else if (strcmp("-ppm", arg) == 0) {
+                i++;
+                ppm = atof(param);
+            }
+            else if (strcmp("-ctl", arg) == 0) {
+                i++;
+                control_pipe = param;
+            }
+            else if (strcmp("-rdsh", arg)==0) {
+                i++;
+                bind_rds_history(param);
+            }
+            else if (strcmp("-af", arg) == 0)
+            {
+                i++;
+                while (1)
+                {
+                    rds_data.af_pool[rds_data.af_count++] = mhz_to_binary((int)(1e6 * atof(param)));
+                    rds_data.rds_set = 1;
+                    if (argv[i+1] != NULL && argv[i+1][0] != '-')
+                    {
+                        param = argv[++i];
+                    }
+                    else
+                        break;
+                }
+            }
+            else
+            {
+                show_help(arg);
             }
         }
-         else if(strcmp("-rdsh", arg)==0 && param != NULL) {
-            i++;
-            bind_rds_history(param);
-        } else {
-            fatal("Unrecognised argument: %s.\n"
-            "Syntax: pi_fm_rds [-freq freq] [-audio file] [-ppm ppm_error] [-pi pi_code]\n"
-            "                  [-ps ps_text] [-rt rt_text] [-pty pty] [-ctl control_pipe]\n"
-            "                  [-rdsh history_file] [-pulse] [-dbus]\n", arg);
+        else
+        {
+            show_help(arg);
         }
     }
-    
+
     int errcode = tx(carrier_freq, audio_file, pulseaudio, rds_data, ppm, control_pipe, dbus_mediainfo);
     
     terminate(errcode);

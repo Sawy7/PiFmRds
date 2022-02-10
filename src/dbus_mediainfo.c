@@ -286,7 +286,7 @@ void on_signal (GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVari
 
     if (g_variant_lookup(child, "PlaybackStatus", "s", &parameters_str))
     {
-        if (strcmp((char*)parameters_str, "Paused") == 0)
+        if (strcmp((char*)parameters_str, "Paused") == 0 || strcmp((char*)parameters_str, "Stopped") == 0)
         {
             exit_loop = 1;
         }

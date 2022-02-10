@@ -127,7 +127,7 @@ int poll_control_pipe(int dbus_mediainfo) {
         else if(res[0] == 'P' && res[1] == 'I') {
             uint16_t pi = (uint16_t) strtol(arg, NULL, 16);
             set_rds_pi(pi);
-            printf("Set PI to: 0x%s\n", arg);
+            printf("Set PI to: %s\n", arg);
             return CONTROL_PIPE_PI_CHANGED;
         }
     }

@@ -21,6 +21,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef PULSE_H
+#define PULSE_H
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -38,3 +41,5 @@ void list_inputs_cb(pa_context *c, const pa_sink_input_info *i, int eol, void *u
 void pulse_unload();
 void context_unload_cb(pa_context *c, void *userdata);
 void sink_unload_cb(pa_context *c, int success, void *userdata);
+
+#endif /* PULSE_H */

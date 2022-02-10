@@ -1,6 +1,7 @@
 /*
     PiFmRds - FM/RDS transmitter for the Raspberry Pi
     Copyright (C) 2014 Christophe Jacquet, F8FTK
+    Copyright (C) 2021 Jan Němec
     
     See https://github.com/ChristopheJacquet/PiFmRds
     

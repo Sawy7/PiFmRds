@@ -21,6 +21,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef DBUS_H
+#define DBUS_H
+
 // Forward declaration
 typedef struct _GVariant GVariant;
 typedef struct _GDBusProxy GDBusProxy;
@@ -47,3 +50,5 @@ void quit_dbus_thread();
 // 1) Text on the receiver is all kinds of broken
 // 2) Most songs fit into 64 chars just fine
 // 3) Radio stations (like the big ones) do it like this anyway
+
+#endif /* DBUS_H */

@@ -1,6 +1,7 @@
 /*
     PiFmRds - FM/RDS transmitter for the Raspberry Pi
     Copyright (C) 2014 Christophe Jacquet, F8FTK
+    Copyright (C) 2021 Jan Němec
     
     See https://github.com/ChristopheJacquet/PiFmRds
     
@@ -30,7 +31,6 @@
 #include <math.h>
 
 #include "rds.h"
-// #include "pulse_virtual.h"
 #include "pulse_module.h"
 #include "control_pipe.h"
 

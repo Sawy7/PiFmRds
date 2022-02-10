@@ -33,10 +33,21 @@
 
 struct rds_data_s
 {
+    // Programme ID
     uint16_t pi;
+    // Programme Service Name
     char *ps;
+    // Variable PS
+    int ps_var;
+    // Radio Text
     char *rt;
+    // Programme Type
     uint8_t pty;
+    // Alternative frequencies
+    uint8_t af_pool[25];
+    int af_count;
+    // Start-rds (in arguments)
+    int rds_set;
 };
 
 extern int open_control_pipe(char *filename);

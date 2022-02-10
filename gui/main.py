@@ -174,7 +174,7 @@ class Window:
     def get_current_freq(self):
         freq = str(subprocess.check_output("systemctl --user status pifmrds | grep freq", shell=True))
         freq = re.findall("-freq (\d*.\d*)", freq)[0]
-        app_wide_css.css_multigod([("freq_spin", "#33D17A")])
+        app_wide_css.css_multistyle([("freq_spin", "#33D17A")])
         freq_adjust = Gtk.Adjustment(value=float(freq),
                                     lower=76,
                                     upper=108,
@@ -265,7 +265,6 @@ class Window:
         station_pty_label = Gtk.Label()
         station_pty_label.set_text("Program Type")
         station_pty = Gtk.ComboBoxText(name="station_pty")
-        # station_pty.set_name("station_pty")
 
         self.fill_station_pty(station_pty)
         station_pty.set_active(0)
@@ -354,6 +353,7 @@ class Window:
 
     def get_manual_rds_func(self):
         self.previous_rds_history = self.rds.get_history()
+        print("bonk")
         self.station_pi.connect("changed", self.rds.rds_entry_changing, "station_pi")
         self.station_name.connect("changed", self.rds.rds_entry_changing, "station_name")
         self.station_pty.connect("changed", self.rds.rds_entry_changing, "station_pty")
@@ -377,32 +377,32 @@ class Window:
             self.reset()
         return True
 
-    def repopulate_rds_entries(self):
-        rds_history = self.rds.get_history()
-        if rds_history == self.previous_rds_history:
-            return
+    # def repopulate_rds_entries(self):
+    #     rds_history = self.rds.get_history()
+    #     if rds_history == self.previous_rds_history:
+    #         return
         
-        self.station_name.set_text(rds_history["station_name"])
-        # self.rds.rds_entry_changing(self.station_pi, "station_pi")
-        # self.rds.rds_entry_changing(self.station_name, "station_name")
-        # self.rds.rds_entry_changing(self.station_pty, "station_pty")
-        entries_to_color = [
-            ("station_pi", "#33D17A"),
-            ("station_name", "#33D17A")
-            # ("station_pty", "#33D17A")
-        ]
+    #     self.station_name.set_text(rds_history["station_name"])
+    #     # self.rds.rds_entry_changing(self.station_pi, "station_pi")
+    #     # self.rds.rds_entry_changing(self.station_name, "station_name")
+    #     # self.rds.rds_entry_changing(self.station_pty, "station_pty")
+    #     entries_to_color = [
+    #         ("station_pi", "#33D17A"),
+    #         ("station_name", "#33D17A")
+    #         # ("station_pty", "#33D17A")
+    #     ]
         
-        if not self.autords_state:
-            self.station_text.set_text(rds_history["station_text"])
-            entries_to_color.append(("station_text", "#33D17A"))
-            # self.rds.rds_entry_changing(self.station_text, "station_text")
+    #     if not self.autords_state:
+    #         self.station_text.set_text(rds_history["station_text"])
+    #         entries_to_color.append(("station_text", "#33D17A"))
+    #         # self.rds.rds_entry_changing(self.station_text, "station_text")
       
-        app_wide_css.css_multigod(entries_to_color)
+    #     app_wide_css.css_multistyle(entries_to_color)
 
-        if self.af_dialog_exists:
-            self.af_dialog.update_afbox(rds_history)
+    #     if self.af_dialog_exists:
+    #         self.af_dialog.update_afbox(rds_history)
 
-        self.previous_rds_history = rds_history
+    #     self.previous_rds_history = rds_history
 
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
@@ -420,15 +420,8 @@ class Window:
 
     def disable_entry(self, entry, entry_name):
         entry.set_editable(False)
-        # style_provider = Gtk.CssProvider()
         bg_color = "#86929A"
-        # css = "#" + entry_name + "{ background:" +  bg_color + "; }"
-        # style_provider.load_from_data(bytes(css.encode()))
-        # Gtk.StyleContext.add_provider_for_screen(
-        #     Gdk.Screen.get_default(), style_provider,
-        #     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        # )
-        app_wide_css.css_multigod([(entry_name, bg_color)])
+        app_wide_css.css_multistyle([(entry_name, bg_color)])
 
     def reset(self):
         self.stop_history_modifications()
@@ -503,12 +496,6 @@ class Transmission:
     def freq_entry_changing(self, spinbutton, freq):
         style_provider = Gtk.CssProvider()
         bg_color = "#33D17A" if spinbutton.get_text().replace(",", ".") == freq else "#F57900"
-        # css = "#freq_spin { background:" +  bg_color + "; }"
-        # style_provider.load_from_data(bytes(css.encode()))
-        # Gtk.StyleContext.add_provider_for_screen(
-        #     Gdk.Screen.get_default(), style_provider,
-        #     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        # )
         app_wide_css("freq_spin", bg_color)
 
 class RDS:
@@ -588,7 +575,6 @@ class RDS:
         except KeyError:
             pass # no charlimit
         # Colors
-        # style_provider = Gtk.CssProvider()
         if entry_name == "af_input":
             af = entry.get_text()
             try:
@@ -596,19 +582,12 @@ class RDS:
                 bg_color = "#33D17A" if float(entry.get_text()) >= 87.6 and float(entry.get_text()) <= 107.9 else "#F57900"
             except:
                 bg_color = "#F57900"
-            # css = "#" + entry_name + " { background: " +  bg_color + "; }"
         elif isinstance(entry, Gtk.Entry):
             bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
-            # css = "#" + entry_name + " { background: " +  bg_color + "; }"
-        else:
+        elif isinstance(entry, Gtk.ComboBoxText):
             bg_color = "#33D17A" if entry.get_active() == int(self.history[entry_name]) else "#F57900"
-            # css = "#" + entry_name + " button{ background: " +  bg_color + "; }"
-        app_wide_css.css_multigod([(entry_name, bg_color)])
-        # style_provider.load_from_data(bytes(css.encode()))
-        # Gtk.StyleContext.add_provider_for_screen(
-        #     Gdk.Screen.get_default(), style_provider,
-        #     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        # )
+            entry_name = f"{entry_name} button"
+        app_wide_css.css_multistyle([(entry_name, bg_color)])
 
     def toggle_ta(self, switch, state):
         option = "ON" if state else "OFF"
@@ -739,7 +718,7 @@ class CSS:
         self.css_all = []
         self.style_provider = Gtk.CssProvider()
 
-    def css_multigod(self, entry_array):
+    def css_multistyle(self, entry_array):
         self.style_provider = Gtk.CssProvider()
         Gtk.StyleContext.remove_provider_for_screen(
             Gdk.Screen.get_default(), self.style_provider
@@ -752,34 +731,12 @@ class CSS:
         for node in self.css_all:
             css += (f"#{node[0]} {{ background: {node[1]}; }} ")
 
-        # print(css)
+        print(css)
         self.style_provider.load_from_data(bytes(css.encode()))
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), self.style_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
-
-    # def css_godfunction(self, entry_name, color):
-    #     Gtk.StyleContext.remove_provider_for_screen(
-    #         Gdk.Screen.get_default(), self.style_provider
-    #     )
-        
-    #     self.css_all = [node for node in self.css_all if node[0] != entry_name]
-    #     self.css_all.append((entry_name, color))
-    #     css = ""
-    #     for node in self.css_all:
-    #         css += (f"#{node[0]} {{ background: {node[1]}; }} ")
-
-    #     # print(css)
-    #     self.style_provider.load_from_data(bytes(css.encode()))
-    #     Gtk.StyleContext.add_provider_for_screen(
-    #         Gdk.Screen.get_default(), self.style_provider,
-    #         Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-    #     )
-
-def hello():
-    print("yo")
-    return True
 
 if __name__ == "__main__":
     app_wide_css = CSS()
