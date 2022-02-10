@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "waveforms.h"
+#include "control_pipe.h"
 
 #define RT_LENGTH 64
 #define PS_LENGTH 8
@@ -441,6 +442,60 @@ int reuse_rds_history(int dbus_mediainfo) {
         }
     }
     suppress_write = 0;
-    write_rds_history();
+    // write_rds_history();
     return return_value;
+}
+
+void manage_rds_startparams(struct rds_data_s *rds_data)
+{
+    int history_reused = reuse_rds_history(rds_data->dbus_mediainfo);
+    
+    if (rds_data->dbus_mediainfo)
+    {
+        rds_data->rt = "NO MEDIA";
+        rds_data->rt_set = 1;
+    }
+        
+    if (history_reused)
+    {
+        printf("Using RDS parameters from history. Unless they were set explicitly.\n");
+        if (history_reused == 2)
+        {
+            rds_data->ps_var = 1;
+        }
+
+        if (rds_data->pi_set)
+            set_rds_pi(rds_data->pi);
+        if (rds_data->ps_set)
+        {
+            set_rds_ps(rds_data->ps);
+            rds_data->ps_var = 0;
+        }
+        if (rds_data->rt_set)
+            set_rds_rt(rds_data->rt);
+        if (rds_data->pty_set)
+            set_rds_pty(rds_data->pty);
+    }
+    else // == 0
+    {
+        if (rds_data->ps)
+        {
+            disable_varying_ps();
+            set_rds_ps(rds_data->ps);
+        }
+        else {
+            rds_data->ps = "<Varying>";
+            rds_data->ps_var = 1;
+        }
+        set_rds_pi(rds_data->pi);
+        set_rds_rt(rds_data->rt);
+        set_rds_pty(rds_data->pty);
+
+        printf("Adding specified alternative frequencies.\n");
+        for (int i = 0; i < rds_data->af_count; i++)
+        {
+            add_rds_af(rds_data->af_pool[i]);
+        }
+    }
+
 }

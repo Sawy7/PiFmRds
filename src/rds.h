@@ -23,6 +23,7 @@
 #define RDS_H
 
 #include <stdint.h>
+#include "control_pipe.h"
 
 extern void get_rds_samples(float *buffer, int count);
 extern void bind_rds_history(char *filename);
@@ -37,5 +38,6 @@ extern void add_rds_af(uint8_t af);
 extern void clear_rds_af();
 extern uint8_t mhz_to_binary(int freq);
 extern int reuse_rds_history(int dbus_mediainfo);
+extern void manage_rds_startparams(struct rds_data_s *rds_data);
 
 #endif /* RDS_H */

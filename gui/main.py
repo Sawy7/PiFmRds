@@ -329,7 +329,6 @@ class Window:
         station_ta_label.show()
 
         station_ta = Gtk.Switch()
-        station_ta.set_state(self.autords_state)
         station_ta.connect("state-set", self.rds.toggle_ta)
         station_ta.set_margin_top(20)
         self.win_right.attach(station_ta, 1,5,1,1)
@@ -353,7 +352,6 @@ class Window:
 
     def get_manual_rds_func(self):
         self.previous_rds_history = self.rds.get_history()
-        print("bonk")
         self.station_pi.connect("changed", self.rds.rds_entry_changing, "station_pi")
         self.station_name.connect("changed", self.rds.rds_entry_changing, "station_name")
         self.station_pty.connect("changed", self.rds.rds_entry_changing, "station_pty")
@@ -362,6 +360,8 @@ class Window:
         self.station_pi.set_text(self.previous_rds_history["station_pi"])
         self.station_name.set_text(self.previous_rds_history["station_name"])
         self.station_pty.set_active(int(self.previous_rds_history["station_pty"]))
+        app_wide_css.css_multistyle([("station_pty button", "#33D17A")]) # GTK is amazing and this just fixes case with initial id 0
+        self.station_ta.set_state(self.previous_rds_history["station_ta"])
         
         if self.autords_state:
             # self.disable_entry(station_name, "station_name")
@@ -373,36 +373,10 @@ class Window:
 
     def fetch_events(self):
         if self.restart_event:
+            if self.rds.get_history() != self.previous_rds_history:
+                self.reset()
             self.restart_event = False
-            self.reset()
         return True
-
-    # def repopulate_rds_entries(self):
-    #     rds_history = self.rds.get_history()
-    #     if rds_history == self.previous_rds_history:
-    #         return
-        
-    #     self.station_name.set_text(rds_history["station_name"])
-    #     # self.rds.rds_entry_changing(self.station_pi, "station_pi")
-    #     # self.rds.rds_entry_changing(self.station_name, "station_name")
-    #     # self.rds.rds_entry_changing(self.station_pty, "station_pty")
-    #     entries_to_color = [
-    #         ("station_pi", "#33D17A"),
-    #         ("station_name", "#33D17A")
-    #         # ("station_pty", "#33D17A")
-    #     ]
-        
-    #     if not self.autords_state:
-    #         self.station_text.set_text(rds_history["station_text"])
-    #         entries_to_color.append(("station_text", "#33D17A"))
-    #         # self.rds.rds_entry_changing(self.station_text, "station_text")
-      
-    #     app_wide_css.css_multistyle(entries_to_color)
-
-    #     if self.af_dialog_exists:
-    #         self.af_dialog.update_afbox(rds_history)
-
-    #     self.previous_rds_history = rds_history
 
     def get_auto_rds_switch(self):
         rds_metadata_label = Gtk.Label()
@@ -538,6 +512,7 @@ class RDS:
             station_name = ""
             station_text = ""
             station_pty = ""
+            station_ta = False
             station_af = []
             psvar = False
             with open("/tmp/rdshistory.txt", "r") as f:
@@ -557,18 +532,19 @@ class RDS:
                     elif "PTY " in line:
                         field_text = field_text[1:]
                         station_pty = field_text
+                    elif "TA ON" in line:
+                        station_ta = True
                     elif "AF " in line:
                         station_af = field_text.split(";")
                         station_af = [(int(af)+875)/10 for af in station_af]
-            self.history = {"station_pi": station_pi, "station_name": station_name, "station_text": station_text, "station_pty": station_pty, "station_af": station_af}
-            # print(self.history)
+            self.history = {"station_pi": station_pi, "station_name": station_name, "station_text": station_text, "station_pty": station_pty, "station_af": station_af, "station_ta": station_ta}
             return self.history
         except:
             return None
 
     def rds_entry_changing(self, entry, entry_name):
         # Character limit
-        print(entry_name)
+        # print(entry_name)
         try:
             charlimit = self.charlimits[entry_name]
             entry.set_text(entry.get_text()[:charlimit])
@@ -604,7 +580,6 @@ class FileEventHandler(FileSystemEventHandler):
     
     def on_modified(self, event):
         if self.ignore == 0:
-            # self.window.repopulate_rds_entries()
             self.window.restart_event = True
         else:
             self.ignore -= 1
@@ -731,7 +706,7 @@ class CSS:
         for node in self.css_all:
             css += (f"#{node[0]} {{ background: {node[1]}; }} ")
 
-        print(css)
+        # print(css)
         self.style_provider.load_from_data(bytes(css.encode()))
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), self.style_provider,
