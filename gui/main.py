@@ -26,11 +26,9 @@
 import gi, os, subprocess, re, time
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, Gio, GObject
+from gi.repository import Gtk, Gdk, Gio, GObject, GLib
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-
-# TODO: Make app fetch data periodically
 
 class Window:
     def __init__(self, width, height):
@@ -44,7 +42,7 @@ class Window:
         self.setup_headerbar()
         self.setup_statusicon()
 
-        GObject.timeout_add_seconds(1, self.fetch_events)
+        GLib.timeout_add_seconds(1, self.fetch_events)
         self.restart_event = False
 
     def set_icon(self):
@@ -79,10 +77,12 @@ class Window:
         self.header_bar.pack_start(kill_switch)
 
     def setup_statusicon(self):
+        print("setup")
         self.window_hidden = False
         self.statusicon = Gtk.StatusIcon()
         self.statusicon.set_from_pixbuf(self.icon)
-        self.statusicon.connect('button-press-event', self.statusicon_react)
+        self.statusicon.connect("button-press-event", self.statusicon_react)
+        self.win.connect("window-state-event", self.winevent_react)
 
     def statusicon_react(self, *args): # TODO: Make a menu
         if self.window_hidden:
@@ -142,7 +142,6 @@ class Window:
 
         self.win.add(self.win_layout)
         self.win.connect("destroy", Gtk.main_quit) # TODO: Make into tray
-        self.win.connect("window-state-event", self.winevent_react)
         self.win.show_all()
 
     def winevent_react(self, window, event):
@@ -470,7 +469,7 @@ class Transmission:
     def freq_entry_changing(self, spinbutton, freq):
         style_provider = Gtk.CssProvider()
         bg_color = "#33D17A" if spinbutton.get_text().replace(",", ".") == freq else "#F57900"
-        app_wide_css("freq_spin", bg_color)
+        app_wide_css.css_multistyle([("freq_spin", bg_color)])
 
 class RDS:
     def __init__(self, window):
