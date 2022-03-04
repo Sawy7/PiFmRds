@@ -15,20 +15,20 @@ Changes:
  .
    * First time packaging pifmrds.
 Checksums-Sha1:
- 73214f3ff3b09f8d89fd81f71bfee6ff567669dd 498 pifmrds_1.0.0.dsc
- aedc296f739331c05a8a68932e7e32f2fcb18f7c 307726 pifmrds_1.0.0.tar.gz
- 21ef17e0f27f950f0920542ac9b620df3373e2af 253136 pifmrds-dbgsym_1.0.0_armhf.deb
- 035c2ddcdda5cd2cd3bc47b147b0b4a4cad1184b 5353 pifmrds_1.0.0_armhf.buildinfo
- b60bed3d86a97b13927694420735f6ae9b411fb6 22148 pifmrds_1.0.0_armhf.deb
+ 391454c2e2f0a90c68aedbe901d5f68ca00cfa89 498 pifmrds_1.0.0.dsc
+ 9e46f38b3d5eff6b6e0b7dcbb5923e1d72a31c20 354403 pifmrds_1.0.0.tar.gz
+ 36d0ef49e6886a6fbbfe45308b175ddf2bbec4e9 291148 pifmrds-dbgsym_1.0.0_armhf.deb
+ 639fbd574c726359a5b5414c7ff9463c06e19d6a 5353 pifmrds_1.0.0_armhf.buildinfo
+ d35e23d4b5e7fd8443edd55fa1919bc2ac7a0e7a 21968 pifmrds_1.0.0_armhf.deb
 Checksums-Sha256:
- 9a68db55a36aad7e74142340249470e1a6aef6792f763c9978ed2eec8fab51e4 498 pifmrds_1.0.0.dsc
- 589bc3579f7dd27a3df1be1446184169a7843f3b49ad22e41b4a761a8750b093 307726 pifmrds_1.0.0.tar.gz
- ce9cf8892cc4ce647d64ead033a8335ebafcbd1f2776e07b5d752ce50c41c4ed 253136 pifmrds-dbgsym_1.0.0_armhf.deb
- 3769a35f06d4bf0b005d03b1f0859f3339f4997163bdbb03e6e2ccb1d2fffb9d 5353 pifmrds_1.0.0_armhf.buildinfo
- 1caada8aef61f252ec316cde48f1b301df112c5599e83493998522bd1ba73077 22148 pifmrds_1.0.0_armhf.deb
+ 450febaf18d245414a7e9d894a2f35e649b2be26ddd492158c008c650febcf94 498 pifmrds_1.0.0.dsc
+ c4763bd87889a8eab7b999a62710884a309fde38802fecd51fb47ef08d76df32 354403 pifmrds_1.0.0.tar.gz
+ 11508d64ac82da4c1ec23393eda335626df0ce7f7a2d1c9559e6629b6d76e059 291148 pifmrds-dbgsym_1.0.0_armhf.deb
+ f2d306d2e26dcefa81d1b30a7278067d73a8c617ed08ef3e42dcb098adfc29d3 5353 pifmrds_1.0.0_armhf.buildinfo
+ 0b9e32cb65d7e31d3b699fe9e2182cca8876cb32ea927f246581b5fab251528c 21968 pifmrds_1.0.0_armhf.deb
 Files:
- 97a55bff2fd86ac67d8befee60efd1a3 498 unknown optional pifmrds_1.0.0.dsc
- ab5a0fc3858b6959ffaf5eccb0913b40 307726 unknown optional pifmrds_1.0.0.tar.gz
- 880bc32b27fd26cd35d2c3d578395ffc 253136 debug optional pifmrds-dbgsym_1.0.0_armhf.deb
- 52fb1d341380c1262fb3d9242b62a9c8 5353 unknown optional pifmrds_1.0.0_armhf.buildinfo
- 1e4674570cdce739fb687c25de5df83f 22148 unknown optional pifmrds_1.0.0_armhf.deb
+ a779c8adae6aed44c5f6a9f0d8cd790f 498 unknown optional pifmrds_1.0.0.dsc
+ 37079c70083023aa175aa956f4ee2303 354403 unknown optional pifmrds_1.0.0.tar.gz
+ 017e138df3bec59a6dfe2006a519c09b 291148 debug optional pifmrds-dbgsym_1.0.0_armhf.deb
+ 899d78db9c370340656692266b4a56aa 5353 unknown optional pifmrds_1.0.0_armhf.buildinfo
+ 7cf1ee2f9685e1aa14ff5077f432eff6 21968 unknown optional pifmrds_1.0.0_armhf.deb

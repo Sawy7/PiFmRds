@@ -544,11 +544,15 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
         if(rds_data.ps_var) {
             if(count == 512) {
                 snprintf(myps, 9, "%08d", count2);
+                set_history_write(1);
                 set_rds_ps(myps);
+                set_history_write(0);
                 count2++;
             }
             else if(count == 1024) {
+                set_history_write(1);
                 set_rds_ps("RPi-Live");
+                set_history_write(0);
                 count = 0;
             }
             count++;

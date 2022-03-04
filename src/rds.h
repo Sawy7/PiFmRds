@@ -39,5 +39,6 @@ extern void clear_rds_af();
 extern uint8_t mhz_to_binary(int freq);
 extern int reuse_rds_history(int dbus_mediainfo);
 extern void manage_rds_startparams(struct rds_data_s *rds_data);
+extern void set_history_write(int suppress);
 
 #endif /* RDS_H */

@@ -499,3 +499,8 @@ void manage_rds_startparams(struct rds_data_s *rds_data)
     }
 
 }
+
+void set_history_write(int suppress)
+{
+    suppress_write = suppress;
+}
