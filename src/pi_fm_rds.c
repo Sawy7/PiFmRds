@@ -572,6 +572,8 @@ int tx(uint32_t carrier_freq, char *audio_file, int pulseaudio, struct rds_data_
             {
                 strcpy(mediainfo, mediainfo_new);
                 set_rds_rt(mediainfo);
+                if (strcmp("NO MEDIA", mediainfo) != 0 && strcmp("NO METADATA", mediainfo) != 0)
+                    set_rds_rt_tags();
                 printf("Mediainfo changed: %s\n", mediainfo);
             }
         }      

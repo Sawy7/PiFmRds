@@ -85,6 +85,26 @@ int poll_control_pipe(int dbus_mediainfo) {
             printf("PS set to: \"%s\"\n", arg);
             return CONTROL_PIPE_PS_SET;
         }
+        else if(res[0] == 'R' && res[1] == 'T' && res[2] == '+') {
+            if (dbus_mediainfo)
+            {
+                printf("RT+ was not toggled. Pulling from metadata.\n");
+            }
+            else
+            {
+                if (strcmp(arg+1, "ON") == 0)
+                {
+                    set_rds_rt_tags();
+                    printf("RT+ toggled. Song metadata from RT will be layed out.\nNote: Make sure your format is: 'Artist - SongName'\n");
+                }
+                else if (strcmp(arg+1, "OFF") == 0) 
+                {
+                    clear_rds_rt_tags();
+                    printf("Not broadcasting RT+ anymore.\n");
+                }
+            }
+            return CONTROL_PIPE_RT_PLUS_SET;
+        }
         else if(res[0] == 'R' && res[1] == 'T') {
             if (dbus_mediainfo)
             {

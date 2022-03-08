@@ -490,6 +490,8 @@ class RDS:
             event_counter += 1
         if station_text_new != "" and station_text_new != "<Auto>":
             event_counter += 1
+            if " - " in station_text_new:
+                event_counter += 1
         # if station_pty_new != "":
         #     event_counter += 1
         self.window.file_handler.ignore_events(event_counter-1)
@@ -502,6 +504,8 @@ class RDS:
         if station_text_new != "" and station_text_new != "<Auto>":
             os.system(f'echo "RT {station_text_new}" > /tmp/rdspipe')
             # station_text.set_text(station_text_new)
+            if " - " in station_text_new:
+                os.system(f'echo "RT+ ON" > /tmp/rdspipe')
         if station_pty_new != "":
             os.system(f'echo "PTY {station_pty_new}" > /tmp/rdspipe')
 
@@ -563,6 +567,18 @@ class RDS:
             bg_color = "#33D17A" if entry.get_active() == int(self.history[entry_name]) else "#F57900"
             entry_name = f"{entry_name} button"
         app_wide_css.css_multistyle([(entry_name, bg_color)])
+
+        if entry_name == "station_text":
+            if " - " in entry.get_text():
+                self.set_entry_icon(entry, "zoom-in", "This looks like a song name. RT+ will be activated.\nFormat: 'Artist - Song Name'")
+            else:
+                self.set_entry_icon(entry, "dialog-question", "This is not a song name (or format is wrong). Will be sent as regular RT.")
+
+    def set_entry_icon(self, entry, name, tooltip_text):
+        icontheme = Gtk.IconTheme.get_default()
+        icon = icontheme.load_icon(name, 16, 0)
+        entry.set_icon_from_pixbuf(Gtk.EntryIconPosition.SECONDARY, icon)
+        entry.set_icon_tooltip_text(Gtk.EntryIconPosition.SECONDARY, tooltip_text)
 
     def toggle_ta(self, switch, state):
         option = "ON" if state else "OFF"

@@ -41,6 +41,10 @@ struct {
     int ta;
     char ps[PS_LENGTH];
     char rt[RT_LENGTH];
+    uint8_t rt_title_start;
+    uint8_t rt_title_length;
+    uint8_t rt_artist_start;
+    uint8_t rt_artist_length;
     uint8_t pty;
 } rds_params = { 0 };
 /* Here, the first member of the struct must be a scalar to avoid a
@@ -186,42 +190,39 @@ void get_rds_group(int *buffer) {
                 if(rt_state >= 16) rt_state = 0;
             }
         }
-        else if (state == 5) // 3A mockup
+        else if (state == 5) // 3A (RT+ announce)
         {
             blocks[1] = 0x3400 | 0x16; // Type 3A /w RT+ tags in type 11A 
             blocks[2] = 0;
             blocks[3] = 0x4BD7;
+            // printf("3A ");
         }
-        else if (state == 6) // 11A mockup
+        else if (state == 6) // 11A (RT+ markers)
         {
-            char *dash = strchr(rds_params.rt, '-');
-            int dash_index = (int)(dash - rds_params.rt);
-
-            uint8_t title_start = 0;
-            uint8_t title_length = dash_index - 2;
-            uint8_t artist_start = dash_index + 2;
-            uint8_t artist_length = strlen(rds_params.rt) - title_length - 3;
-
-            title_start &= 0x3F;
-            title_length &= 0x3F;
-            artist_start &= 0x3F;
-            artist_length &= 0x1F;
+            rds_params.rt_title_start &= 0x3F;
+            rds_params.rt_title_length &= 0x3F;
+            rds_params.rt_artist_start &= 0x3F;
+            rds_params.rt_artist_length &= 0x1F;
 
             blocks[1] = 0xB400;
             blocks[1] |= 0b10000;   // Item toggle bit
             blocks[1] |= 0b1000;    // Item running bit
 
             blocks[2] = 4 << 13;
-            blocks[2] |= title_start << 7;
-            blocks[2] |= title_length << 1;
+            blocks[2] |= rds_params.rt_title_start << 7;
+            blocks[2] |= rds_params.rt_title_length << 1;
 
             blocks[3] = 1 << 11;
-            blocks[3] |= artist_start << 5;
-            blocks[3] |= artist_length;
+            blocks[3] |= rds_params.rt_artist_start << 5;
+            blocks[3] |= rds_params.rt_artist_length;
+            // printf("11A\n");
         }
     
         state++;
-        if(state >= 7) state = 0;
+        if( (state >= 5 &&
+            rds_params.rt_title_length == 0 &&
+            rds_params.rt_artist_length == 0) ||
+            state >= 7) state = 0;
     }
     blocks[1] |= rds_params.pty << 5; // Adding PTY
     // printf("block1: %04X\n", blocks[1]);
@@ -344,6 +345,9 @@ void write_rds_history() {
     write(historyfd, rds_params.rt, RT_LENGTH);
     write(historyfd, "\n", 1);
 
+    // RT+
+    if (rds_params.rt_title_length > 0 && rds_params.rt_artist_length > 0) write(historyfd, "RT+ ON\n", 7);
+
     // PTY
     snprintf(buf, sizeof(buf), "PTY %d\n", rds_params.pty);
     write(historyfd, buf, strlen(buf));
@@ -379,13 +383,34 @@ void set_rds_pi(uint16_t pi_code) {
     write_rds_history();
 }
 
+void clear_rds_rt_tags()
+{
+    rds_params.rt_title_length = rds_params.rt_artist_length = 0;
+    write_rds_history();
+}
+
+void set_rds_rt_tags()
+{
+    char *dash = strchr(rds_params.rt, '-');
+    int dash_index = (int)(dash - rds_params.rt);
+
+    rds_params.rt_title_start = 0;
+    rds_params.rt_title_length = dash_index - 2;
+    rds_params.rt_artist_start = dash_index + 2;
+    rds_params.rt_artist_length = strlen(rds_params.rt) - rds_params.rt_title_length - 3;
+
+    write_rds_history();
+}
+
 void set_rds_rt(char *rt) {
     strncpy(rds_params.rt, rt, 64);
     for(int i=0; i<64; i++) {
         if(rds_params.rt[i] == 0) rds_params.rt[i] = 32;
     }
     clear_rt = 2; // Sends A/B clear twice, cause some receivers are brokey
-    write_rds_history();
+    if (rds_params.rt_title_length != 0 && rds_params.rt_artist_length != 0)
+        printf("Not broadcasting RT+ anymore. Must be toggled back on manually after each RT change.\n");
+    clear_rds_rt_tags(); // history write inside clear
 }
 
 void set_rds_ps(char *ps) {
@@ -457,6 +482,12 @@ int reuse_rds_history(int dbus_mediainfo) {
             arg[8] = 0;
             varying_ps = 0;
             set_rds_ps(arg);
+        }
+        else if(res[0] == 'R' && res[1] == 'T' && res[2] == '+') {
+            if (!dbus_mediainfo)
+            {
+                set_rds_rt_tags();
+            }
         }
         else if(res[0] == 'R' && res[1] == 'T') {
             if (!dbus_mediainfo)

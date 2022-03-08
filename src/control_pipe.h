@@ -24,12 +24,13 @@
 #ifndef CTL_H
 #define CTL_H
 
-#define CONTROL_PIPE_PS_SET     1
-#define CONTROL_PIPE_RT_SET     2
-#define CONTROL_PIPE_TA_SET     3
-#define CONTROL_PIPE_AF_ADDED   4
-#define CONTROL_PIPE_AF_CLEARED 5
-#define CONTROL_PIPE_PI_CHANGED 6
+#define CONTROL_PIPE_PS_SET         1
+#define CONTROL_PIPE_RT_SET         2
+#define CONTROL_PIPE_TA_SET         3
+#define CONTROL_PIPE_AF_ADDED       4
+#define CONTROL_PIPE_AF_CLEARED     5
+#define CONTROL_PIPE_PI_CHANGED     6
+#define CONTROL_PIPE_RT_PLUS_SET    7
 
 struct rds_data_s
 {
