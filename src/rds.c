@@ -45,6 +45,7 @@ struct {
     uint8_t rt_title_length;
     uint8_t rt_artist_start;
     uint8_t rt_artist_length;
+    int rt_plus_toggle;
     uint8_t pty;
 } rds_params = { 0 };
 /* Here, the first member of the struct must be a scalar to avoid a
@@ -193,7 +194,7 @@ void get_rds_group(int *buffer) {
         else if (state == 5) // 3A (RT+ announce)
         {
             blocks[1] = 0x3400 | 0x16; // Type 3A /w RT+ tags in type 11A 
-            blocks[2] = 0;
+            // blocks[2] = 0;
             blocks[3] = 0x4BD7;
             // printf("3A ");
         }
@@ -205,24 +206,26 @@ void get_rds_group(int *buffer) {
             rds_params.rt_artist_length &= 0x1F;
 
             blocks[1] = 0xB400;
-            blocks[1] |= 0b10000;   // Item toggle bit
-            blocks[1] |= 0b1000;    // Item running bit
+            if (rds_params.rt_plus_toggle)
+                blocks[1] |= 0b10000;   // Item toggle bit
 
-            blocks[2] = 4 << 13;
-            blocks[2] |= rds_params.rt_title_start << 7;
-            blocks[2] |= rds_params.rt_title_length << 1;
+            if (rds_params.rt_title_length > 0 && rds_params.rt_artist_length > 0)
+            {
+                blocks[1] |= 0b1000;    // Item running bit
+                blocks[2] = 4 << 13;
+                blocks[2] |= rds_params.rt_title_start << 7;
+                blocks[2] |= rds_params.rt_title_length << 1;
 
-            blocks[3] = 1 << 11;
-            blocks[3] |= rds_params.rt_artist_start << 5;
-            blocks[3] |= rds_params.rt_artist_length;
+                blocks[3] = 1 << 11;
+                blocks[3] |= rds_params.rt_artist_start << 5;
+                blocks[3] |= rds_params.rt_artist_length;
+            }
+
             // printf("11A\n");
         }
     
         state++;
-        if( (state >= 5 &&
-            rds_params.rt_title_length == 0 &&
-            rds_params.rt_artist_length == 0) ||
-            state >= 7) state = 0;
+        if(state >= 7) state = 0;
     }
     blocks[1] |= rds_params.pty << 5; // Adding PTY
     // printf("block1: %04X\n", blocks[1]);
@@ -398,6 +401,11 @@ void set_rds_rt_tags()
     rds_params.rt_title_length = dash_index - 2;
     rds_params.rt_artist_start = dash_index + 2;
     rds_params.rt_artist_length = strlen(rds_params.rt) - rds_params.rt_title_length - 3;
+
+    if (rds_params.rt_plus_toggle == 0)
+        rds_params.rt_plus_toggle = 1;
+    else
+        rds_params.rt_plus_toggle = 0;
 
     write_rds_history();
 }
