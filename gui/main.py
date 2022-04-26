@@ -6,8 +6,9 @@
     
     See https://github.com/ChristopheJacquet/PiFmRds
     
-    rds_wav.c is a test program that writes a RDS baseband signal to a WAV
-    file. It requires libsndfile.
+    main.py is a GUI application written in Python. It incorporates
+    all the features and settings otherwise accessible through commands
+    and config files.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -473,7 +474,7 @@ class Transmission:
 
 class RDS:
     def __init__(self, window):
-        self.charlimits = {"station_name": 8, "station_text": 64}
+        self.charlimits = {"station_name": 8, "station_text": 64, "station_pi": 6}
         self.window = window
         
     def change(self, button):
@@ -563,6 +564,28 @@ class RDS:
                 bg_color = "#F57900"
         elif isinstance(entry, Gtk.Entry):
             bg_color = "#33D17A" if entry.get_text() == self.history[entry_name] else "#F57900"
+            if entry_name == "station_pi": # PI Validation
+                pi_contents = entry.get_text()
+                pi_fix = True
+                hex_letters = ["A", "B", "C", "D", "E", "F"]
+                if len(pi_contents) < 2:
+                    pi_contents = "0x"
+                elif pi_contents[0] != "0" and pi_contents[1] != "x":
+                    pi_contents = "0x" + pi_contents
+                elif pi_contents[0] == "0" and pi_contents[1] != "x" or pi_contents[0] == "x":
+                    pi_contents = "0x" + pi_contents[1::]
+                else:
+                    pi_fix = False
+                
+                pi_filtered = "0x" + "".join([c for c in pi_contents[2::] if c.isdigit() or c.upper() in hex_letters]).upper()
+                print(pi_contents, pi_filtered)
+
+                if pi_filtered != pi_contents:
+                    pi_contents = pi_filtered
+                    pi_fix = True
+                
+                if pi_fix:
+                    entry.set_text(pi_contents)
         elif isinstance(entry, Gtk.ComboBoxText):
             bg_color = "#33D17A" if entry.get_active() == int(self.history[entry_name]) else "#F57900"
             entry_name = f"{entry_name} button"
