@@ -1,3 +1,0 @@
-misc:Pre-Depends=
-shlibs:Depends=libc6 (>= 2.28), libglib2.0-0 (>= 2.28.0), libpulse0 (>= 0.99.1), libsndfile1 (>= 1.0.20)
-misc:Depends=init-system-helpers (>= 1.52)
