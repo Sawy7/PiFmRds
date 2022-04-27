@@ -101,6 +101,7 @@ deps:
 	sudo apt -y install git wget libpulse-dev libsndfile1-dev libdbus-1-dev libdbus-glib-1-2 libdbus-glib-1-dev debhelper
 
 makedeb: app
+	chmod +x ../deb-package/debhelper/build.sh
 	cd ../deb-package/debhelper; \
 	./build.sh
 
