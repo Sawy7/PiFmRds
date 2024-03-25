@@ -424,7 +424,7 @@ class AutoRDS:
     def toggle(self, switch, state):
         file_content = None
         with open("/usr/local/bin/pi_fm_runner", "r") as f:
-            file_content = f.read()
+            file_content = f.read().strip()
             if state:
                 file_content += " -dbus"
             else:
