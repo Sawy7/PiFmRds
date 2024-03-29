@@ -522,7 +522,7 @@ int reuse_rds_history(int dbus_mediainfo) {
             while (af != NULL)
             {
                 add_rds_af((uint8_t)atoi(af));
-                af = strtok(NULL, arg);
+                af = strtok(NULL, ";");
             }
         }
     }
